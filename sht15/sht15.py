@@ -17,8 +17,6 @@ import gc
 import logging
 import uasyncio.core as asyncio
 
-import mpr121
-
 
 # Clock pulse timing (us)
 # Lengthening these may assist communication over long wires
@@ -74,11 +72,6 @@ class NoAcknowledge(SHT15Exception):
     """
 
 
-class CrcError(SHT15Exception):
-    """
-    """
-
-
 class Timeout(SHT15Exception):
     """
     """
@@ -107,7 +100,7 @@ class SHT15:
         self._pinClock = pyb.Pin(clockPin, pyb.Pin.OUT_PP)
 
         self._rawDataTemp = None
-        self._rawDataHum = None
+        self._rawDataHumi = None
         self._measureInitiatedAt = 0
         self._measureReady = False
 
@@ -136,11 +129,11 @@ class SHT15:
             raise InvalidMeasure
 
         if self._statusRegister & SR_LOW_RES:
-            humidity = C1 + C2l * self._rawDataHum + C3l * self._rawDataHum ** 2
-            humidity += (self.temperature - 25.0) * (T1 + T2l * self._rawDataHum)
+            humidity = C1 + C2l * self._rawDataHumi + C3l * self._rawDataHumi ** 2
+            humidity += (self.temperature - 25.0) * (T1 + T2l * self._rawDataHumi)
         else:
-            humidity = C1 + C2h * self._rawDataHum + C3h * self._rawDataHum ** 2
-            humidity += (self.temperature - 25.0) * (T1 + T2h * self._rawDataHum)
+            humidity = C1 + C2h * self._rawDataHumi + C3h * self._rawDataHumi ** 2
+            humidity += (self.temperature - 25.0) * (T1 + T2h * self._rawDataHumi)
 
         if humidity > 100.0:
             humidity = 100.0
@@ -349,10 +342,10 @@ class SHT15:
         """
         if cmd == "temp":
             cmd = CMD_MEAS_TEMP
-        elif cmd == 'hum':
+        elif cmd == '_rawDataHumi':
             cmd = CMD_MEAS_HUMI
         else:
-            WrongParam("measure cmd (%s) must be in ('temp', hum')" % cmd)
+            WrongParam("measure cmd (%s) must be in ('temp', _rawDataHumi')" % cmd)
 
         self._measureReady = False
         self._measureInitiatedAt = pyb.millis()
@@ -393,8 +386,8 @@ class SHT15:
     def loop(self, refresh=5000):
         """ Measurement loop
 
-        This method continuously do measures at refresh rate. It is built as a state machine.
-        It uses asyncio module.
+        This method continuously does measures at 'refresh' rate.
+        It is built as a state machine and uses asyncio module.
 
         @param refresh: refresh measure rate, in ms
         @type refresh: int
@@ -406,30 +399,30 @@ class SHT15:
         while True:
             if state == 'idle':
                 if pyb.elapsed_millis(lastReading) >= refresh:
-                    logger.debug("%d:start new measure",  pyb.millis())
+                    logger.debug("%d:start new measure", pyb.millis())
                     lastReading = pyb.millis()
                     state = 'read temp'
 
             elif state == 'read temp':
-                logger.debug("%d:read raw temp",  pyb.millis())
+                logger.debug("%d:read raw temp", pyb.millis())
                 self._initiateMeasure('temp')
                 state = 'wait temp'
 
             elif state == 'wait temp':
                 if self.measureReady():
-                    logger.debug("%d:temp data ready",  pyb.millis())
+                    logger.debug("%d:temp data ready", pyb.millis())
                     self._rawDataTemp = self._readData()
-                    state = 'read hum'
+                    state = 'read humi'
 
-            elif state == 'read hum':
-                logger.debug("%d:read raw hum",  pyb.millis())
-                self._initiateMeasure('hum')
-                state = 'wait hum'
+            elif state == 'read humi':
+                logger.debug("%d:read raw humi", pyb.millis())
+                self._initiateMeasure('humi')
+                state = 'wait humi'
 
-            elif state == 'wait hum':
+            elif state == 'wait humi':
                 if self.measureReady():
-                    logger.debug("%d:hum data ready",  pyb.millis())
-                    self._rawDataHum = self._readData()
+                    logger.debug("%d:humi data ready", pyb.millis())
+                    self._rawDataHumi = self._readData()
                     logger.debug("%d:measure done in %sms", pyb.millis(), pyb.elapsed_millis(lastReading))
                     state = 'idle'
 
@@ -439,14 +432,15 @@ class SHT15:
         """ All-in-one (blocking)
 
         @return: temperature, humidity, dewpoint
+        @rtype: tuple of 3 float
         """
         self._initiateMeasure('temp')
         self._waitForMeasureReady()
         self._rawDataTemp = self._readData()
 
-        self._rawDataHum = self._initiateMeasure('hum')
+        self._rawDataHumi = self._initiateMeasure('_rawDataHumi')
         self._waitForMeasureReady()
-        self._rawDataHum = self._readData()
+        self._rawDataHumi = self._readData()
 
         return self.temperature, self.humidity, self.dewPoint
 
@@ -456,219 +450,21 @@ class SHT15:
         Soft reset returns sensor status register to default values
         """
         self._initSensor()
-
-
-class SHT15WithCrc(SHT15):
-    """
-    """
-    def __init__(self, dataPin, clockPin):
-        """
-        """
-        self._crc = 0
-
-        #self._statusRegister = 0x00  # sensor status register default state
-
-        super(SHT15WithCrc, self).__init__(dataPin, clockPin)
-
-    def _updateCrc(self, value):
-        """
-
-        Polynomial: x**8 + x**5 + x**4 + 1
-        """
-        POLY = 0x31
-
-        self._crc ^= value
-        for i in range(8, 0, -1):
-            if self._crc & 0x80:
-                self._crc = (self._crc << 1) ^ POLY
-            else:
-                self._crc = self._crc << 1
-
-    def _bitReverse(self, value):
-        """ Bit-reverse a byte (for CRC calculations)
-        """
-        result = 0
-
-        for i in range(8, 0, -1):
-            result = (result << 1) | (value & 0x01)
-            value >>= 1
-
-        return result
-
-    def _readSR(self):
-        """ Read status register
-        """
-
-        # Initialize CRC calculation
-        self._crc = self._bitReverse(self._statusRegister & SR_MASK)
-
-        self.startTransmission()
-        try:
-            self._putByte(CMD_STAT_REG_R)
-        except SHT15Exception:
-            return 0xff
-
-        # Include command byte in CRC calculation
-        self._updateCrc(CMD_STAT_REG_R)
-        result = self.getByte(acq=True)
-        self._updateCrc(result)
-        val = self._getByte(acq=False)
-        val = self._bitReverse(val)
-        if val != self._crc:
-            raise CrcError
-
-        return self._getByte(ack=False)
-
-    def _readData(self):
-        """ Get measurement data from sensor (including CRC)
-        """
-
-        # CRC computation
-        val = self._getByte(acq=True)
-        self._updateCrc(val)
-        data = val
-        val = self._getByte(acq=True)
-        self._updateCrc(val)
-        data = (data << 8) | val
-        val = self._getByte(acq=False)
-        val = self._bitReverse(val)
-        if val != self._crc :
-            raise CrcError("wrong CRC when reading data")
-
-        data = self._getByte(ack=True)
-        data = (data << 8) | self._getByte(ack=False)
-
-        return data
-
-    def _initiateMeasure(self, cmd):
-        """ Initiate measure
-        """
-        if cmd == "temp":
-            cmd = CMD_MEAS_TEMP
-        elif cmd == 'hum':
-            cmd = CMD_MEAS_HUMI
-        else:
-            WrongParam("measure cmd (%s) must be in ('temp', hum')" % cmd)
-
-        self._measureReady = False
-        self._measureInitiatedAt = pyb.millis()
-
-
-        # Initialize CRC calculation
-        self._crc = self._bitReverse(self._statusRegister & SR_MASK)
-
-        # Include command byte in CRC calculation
-        self._updateCrc(cmd)
-
-        self._startTransmission()
-        self._putByte(cmd)
-
-
-class MyEventLoop(asyncio.EventLoop):
-    def time(self):
-        return pyb.millis()
-
-    def wait(self, delay):
-        log = logging.getLogger("asyncio")
-        log.debug("Sleeping for: %s", delay)
-        start = pyb.millis()
-        while pyb.elapsed_millis(start) < delay:
-            gc.collect()
-            pyb.delay(10)
-
-asyncio._event_loop_class = MyEventLoop
-
-
-@asyncio.coroutine
-def backlight(lcd, autoOff=10000):
-    """ LCD backlight management
-    """
-    logger = logging.getLogger("backlight")
-
-    switch = pyb.Switch()
-    touch = mpr121.MPR121(pyb.I2C(1, pyb.I2C.MASTER))
-
-    backlight = False
-    backlightOnTime = 0
-    previousSwitch = False
-
-    while True:
-        #logger.debug("backlight")
-        if touch.touch_status() or switch():
-            if not previousSwitch:
-                if backlight:
-                    logger.info("backlight off")
-                    lcd.light(False)
-                    backlight = False
-                else:
-                    logger.info("backlight on")
-                    lcd.light(True)
-                    backlight = True
-                    backlightOnTime = pyb.millis()
-                previousSwitch = True
-        else:
-            previousSwitch = False
-
-        # Auto switch off screen after 10s
-        # @todo: register a callback with EventLoop.call_later()?
-        if backlight and pyb.elapsed_millis(backlightOnTime) >= autoOff:
-            logger.info("backlight auto off")
-            lcd.light(False)
-            backlight = False
-
-        yield from asyncio.sleep(10)
-
-
-@asyncio.coroutine
-def display(sht15, lcd, refresh=1000):
-    """ Print data
-    """
-    logger = logging.getLogger("display")
-    rtc = pyb.RTC()
-    rtc.datetime((2014, 1, 1, 1, 0, 0, 0, 0))
-
-    while True:
-        try:
-            h, m, s = rtc.datetime()[4:7]
-            measure = h, m, s, sht15.temperature, sht15.humidity, sht15.dewPoint
-            logger.info("%02d:%02d:%02d:temperature=%.1f C, humidity=%.1f%%, dew point=%.1f C", *measure)
-            lcd.write("%02d:%02d:%02d\ntemp=%.1f C\nhumidity=%.1f%%\ndew point=%.1f C\n" % measure)
-        except InvalidMeasure:
-            logger.warning("measure not yet available")
-
-        yield from asyncio.sleep(refresh)
-
-
-@asyncio.coroutine
-def info(refresh=10000):
-    """ Print pyb info
-    """
-    while True:
-        pyb.info()
-
-        yield from asyncio.sleep(refresh)
+        
+        
+        def main():
+            sht15 = SHT15WithCrc('Y11', 'Y12')
+            print(sht15.measure())
+            
+        
+        if __name__ == "__main__":
+            main()
 
 
 def main():
-    logging.basicConfig(logging.DEBUG)
-
-    logger = logging.getLogger("asyncio")
-    logger.level = logging.INFO
-
-    lcd = pyb.LCD('X')
-    lcd.contrast(25)
-
     sht15 = SHT15('Y11', 'Y12')
-
-    loop = asyncio.get_event_loop()
-
-    loop.create_task(sht15.loop(refresh=5000))
-    loop.create_task(display(sht15, lcd, refresh=1000))
-    loop.create_task(backlight(lcd, autoOff=10000))
-    #loop.create_task(info(refresh=10000))
-
-    loop.run_forever()
-
+    print(sht15.measure())
+    
 
 if __name__ == "__main__":
     main()
