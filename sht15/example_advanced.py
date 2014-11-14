@@ -81,7 +81,7 @@ def display(sht15, lcd, refresh=1000):
         try:
             h, m, s = rtc.datetime()[4:7]
             measure = h, m, s, gc.mem_free(), sht15.temperature, sht15.humidity, sht15.dewPoint
-            logger.info("%02d:%02d:%02d %d:temperature=%.1f C, humidity=%.1f%%, dew point=%.1f C", *measure)
+            logger.info("%02d:%02d:%02d,%d,temperature=%.1f C, humidity=%.1f%%, dew point=%.1f C", *measure)
             lcd.write("%02d:%02d:%02d %d\ntemp=%.1f C\nhumidity=%.1f%%\ndew point=%.1f C\n" % measure)
         except InvalidMeasure:
             logger.warning("measure not yet available")
