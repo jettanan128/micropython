@@ -342,10 +342,10 @@ class SHT15:
         """
         if cmd == "temp":
             cmd = CMD_MEAS_TEMP
-        elif cmd == '_rawDataHumi':
+        elif cmd == 'humi':
             cmd = CMD_MEAS_HUMI
         else:
-            WrongParam("measure cmd (%s) must be in ('temp', _rawDataHumi')" % cmd)
+            raise WrongParam("measure cmd (%s) must be in ('temp',humi')" % cmd)
 
         self._measureReady = False
         self._measureInitiatedAt = pyb.millis()
@@ -353,7 +353,7 @@ class SHT15:
         self._startTransmission()
         self._putByte(cmd)
 
-    def _measureReady(self):
+    def _isMeasureReady(self):
         """ Check if non-blocking measurement has completed
         """
 
@@ -409,7 +409,7 @@ class SHT15:
                 state = 'wait temp'
 
             elif state == 'wait temp':
-                if self.measureReady():
+                if self._isMeasureReady():
                     logger.debug("%d:temp data ready", pyb.millis())
                     self._rawDataTemp = self._readData()
                     state = 'read humi'
@@ -420,7 +420,7 @@ class SHT15:
                 state = 'wait humi'
 
             elif state == 'wait humi':
-                if self.measureReady():
+                if self._isMeasureReady():
                     logger.debug("%d:humi data ready", pyb.millis())
                     self._rawDataHumi = self._readData()
                     logger.debug("%d:measure done in %sms", pyb.millis(), pyb.elapsed_millis(lastReading))
@@ -438,7 +438,7 @@ class SHT15:
         self._waitForMeasureReady()
         self._rawDataTemp = self._readData()
 
-        self._rawDataHumi = self._initiateMeasure('_rawDataHumi')
+        self._rawDataHumi = self._initiateMeasure('humi')
         self._waitForMeasureReady()
         self._rawDataHumi = self._readData()
 
@@ -450,13 +450,13 @@ class SHT15:
         Soft reset returns sensor status register to default values
         """
         self._initSensor()
-        
-        
+
+
         def main():
             sht15 = SHT15WithCrc('Y11', 'Y12')
             print(sht15.measure())
-            
-        
+
+
         if __name__ == "__main__":
             main()
 
@@ -464,7 +464,7 @@ class SHT15:
 def main():
     sht15 = SHT15('Y11', 'Y12')
     print(sht15.measure())
-    
+
 
 if __name__ == "__main__":
     main()
