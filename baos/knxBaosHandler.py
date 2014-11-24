@@ -1,58 +1,60 @@
 import struct
 
+import logging
+
 from knxBaos import POS_MAIN_SERV, POS_SUB_SERV
 
 # GetServerItem.Res part
-GET_SRV_ITEM_POS_START = 3  # start item position
-GET_SRV_ITEM_POS_NR = 4  # number of items position
-GET_SRV_ITEM_POS_ERROR = 5  # error ode position
-GET_SRV_ITEM_POS_ARRAY = 5  # Item array position
+GET_SRV_ITEM_POS_START = 2  # start Item position
+GET_SRV_ITEM_POS_NR = 3  # number of items position
+GET_SRV_ITEM_POS_ERROR = 4  # error ode position
+GET_SRV_ITEM_POS_ARRAY = 4  # Item array position
 GET_SRV_ITEM_MIN_LEN = 5  # minimum length of telegram
 
 # SetServerItem.Res part
-SET_SRV_ITEM_POS_START = 3  # start item position
-SET_SRV_ITEM_POS_NR = 4  # number of items position
-SET_SRV_ITEM_POS_ERROR = 5  # error code position
+SET_SRV_ITEM_POS_START = 2  # start Item position
+SET_SRV_ITEM_POS_NR = 3  # number of items position
+SET_SRV_ITEM_POS_ERROR = 4  # error code position
 SET_SRV_ITEM_MIN_LEN = 5  # minimum length of telegram
 
 # GetDatapointDescription.Res part
 GET_DP_DES_POS_START = 3  # start Datapoint position
-GET_DP_DES_POS_NR = 4  # number of Datapoints position
-GET_DP_DES_POS_ERROR = 5  # error code position
-GET_DP_DES_POS_ARRAY = 5  # Datapoint array position
+GET_DP_DES_POS_NR = 3  # number of Datapoints position
+GET_DP_DES_POS_ERROR = 4  # error code position
+GET_DP_DES_POS_ARRAY = 4  # Datapoint array position
 GET_DP_DES_MIN_LEN = 5  # minimum length of telegram
 
 # GetDescriptionString.Res part
-GET_DES_STR_POS_START = 3  # StartString position
-GET_DES_STR_POS_NR = 4  # NumberOfStrings position
-GET_DES_STR_POS_ERROR = 5  # error code position
-GET_DES_STR_POS_ARRAY = 5  # Datapoint array position
+GET_DES_STR_POS_START = 2  # StartString position
+GET_DES_STR_POS_NR = 3  # NumberOfStrings position
+GET_DES_STR_POS_ERROR = 4  # error code position
+GET_DES_STR_POS_ARRAY = 4  # Datapoint array position
 GET_DES_STR_MIN_LEN = 5  # minimum length of telegram
 
 # GetDatapointValue.Res part
-GET_DP_VAL_POS_START = 3  # start Datapoint position
-GET_DP_VAL_POS_NR = 4  # number of Datapoints position
-GET_DP_VAL_POS_ERROR = 5  # error code position
-GET_DP_VAL_POS_ARRAY = 5  # Datapoint array position
+GET_DP_VAL_POS_START = 2  # start Datapoint position
+GET_DP_VAL_POS_NR = 3  # number of Datapoints position
+GET_DP_VAL_POS_ERROR = 4  # error code position
+GET_DP_VAL_POS_ARRAY = 4  # Datapoint array position
 GET_DP_VAL_MIN_LEN = 5  # minimum length of telegram
 
 # DatapointValue.Ind part
-DP_VAL_POS_START = 3  # start Datapoint position
-DP_VAL_POS_NR = 4  # number of Datapoints position
-DP_VAL_POS_ARRAY = 5  # Datapoint array position
+DP_VAL_POS_START = 2  # start Datapoint position
+DP_VAL_POS_NR = 3  # number of Datapoints position
+DP_VAL_POS_ARRAY = 4  # Datapoint array position
 DP_VAL_MIN_LEN = 5  # minimum length of telegram
 
 # SetDatapointValue.Res part
-SET_DP_VAL_POS_START = 3  # start Datapoint position
-SET_DP_VAL_POS_NR = 4  # number of Datapoints position
-SET_DP_VAL_POS_ERROR = 5  # error code position
+SET_DP_VAL_POS_START = 2  # start Datapoint position
+SET_DP_VAL_POS_NR = 3  # number of Datapoints position
+SET_DP_VAL_POS_ERROR = 4  # error code position
 SET_DP_VAL_MIN_LEN = 5  # minimum length of telegram
 
 # GetParameterByte.Res part
-GET_PAR_BYTE_POS_START = 3  # start byte position
-GET_PAR_BYTE_POS_NR = 4  # number of bytes position
-GET_PAR_BYTE_POS_ERROR = 5  # error code position
-GET_PAR_BYTE_POS_ARRAY = 5  # Bytes array position
+GET_PAR_BYTE_POS_START = 2  # start byte position
+GET_PAR_BYTE_POS_NR = 3  # number of bytes position
+GET_PAR_BYTE_POS_ERROR = 4  # error code position
+GET_PAR_BYTE_POS_ARRAY = 4  # Bytes array position
 GET_PAR_BYTE_MIN_LEN = 5  # minimum length of telegram
 
 
@@ -63,13 +65,12 @@ class KnxBaosHandler:
         """
         """
         self._listener = listener
+        self._logger = logging.getLogger("knxBaosHandler")
 
     def receiveCallback(self, telegram):
         """ Handle data received from the BAOS hardware
 
         @param telegram: KNX BAOS ObjectServer telegram
-                         first entry is length then the actual telegram,
-                         see "KNX BAOS ObjectServer Protocol specification"
         @type telegram: byte array
         """
 
@@ -113,26 +114,35 @@ class KnxBaosHandler:
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < GET_SRV_ITEM_MIN_LEN:
+        # Is it usefull? Length should be ok, as we read uart as long as we find the end char...
+        if len(telegram) < GET_SRV_ITEM_MIN_LEN:
+            self._logger.error("_onGetServerItemRes(): telegram too short")
             return
 
         startItem = telegram[GET_SRV_ITEM_POS_START]
-        nNumberOfItems = telegram[GET_SRV_ITEM_POS_NR]
+        numberOfItems = telegram[GET_SRV_ITEM_POS_NR]
+        self._logger.debug("_onGetServerItemRes(): startItem={}, numberOfItems={}".format(startItem, numberOfItems))
 
-        if nNumberOfItems == 0:
+        if numberOfItems == 0:
             errorCode = telegram[GET_SRV_ITEM_POS_ERROR]
-            self._listener.handleError(errorCode)
+            self._logger.error("_onGetServerItemRes(): telegram error {}".format(errorCode))
+            self._listener.handleError(errorCode)  # could also give the startItem, which is in this case the index of bad Item
             return
 
-        pData = &telegram[GET_SRV_ITEM_POS_ARRAY]  # set to first Item
+        #@todo: check telegram length against number of items? Or let error happens with struct?
 
-        for in i range(nNumberOfItems):  # for all items in service
-            itemId            = *pData++  # extract ID of item
-            itemDataLength = *pData++  # extract length of item
+        # Iterate over all items in service
+        index = GET_SRV_ITEM_POS_ARRAY  # point to first Item
+        for i in range(numberOfItems):
+            itemId = telegram[index]
+            itemDataLength = telegram[index+1]
+            itemData = struct.unpack(itemDataLength*'B', telegram[index+2:])
 
-            self._listener.handleGetServerItemRes(startItem, itemId, itemDataLength, pData)
+            # Call listener handler
+            self._listener.handleGetServerItemRes(itemId, itemData)
 
-            pData += itemDataLength  # set pointer to next item
+            # Set index to next Item
+            index += 2 + itemDataLength
 
     def _onSetServerItemRes(self, telegram):
         """ Handle the SetServerItem.Res telegram
@@ -146,17 +156,21 @@ class KnxBaosHandler:
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < SET_SRV_ITEM_MIN_LEN:
+        if len(telegram) < SET_SRV_ITEM_MIN_LEN:
+            self._logger.error("_onSetServerItemRes(): telegram too short")
             return
 
         startItem = telegram[SET_SRV_ITEM_POS_START]
         errorCode = telegram[SET_SRV_ITEM_POS_ERROR]
+        self._logger.debug("_onSetServerItemRes(): startDataPoint={}, numberOfDataPoints={}".format(startDatapoint, numberOfDatapoints))
 
         if errorCode:
+            self._logger.error("_onSetServerItemRes(): telegram error {}".format(errorCode))
             self._listener.handleError(errorCode)
+            return
 
-        else:
-            self._listener.handleSetServerItemRes(startItem)
+        # Call listener handler
+        self._listener.handleSetServerItemRes(startItem)
 
     def _onGetDatapointDescriptionRes(self, telegram):
         """ Handle the GetDatapointDescription.Res telegram
@@ -164,31 +178,39 @@ class KnxBaosHandler:
         This response is sent by the server as reaction to the
         GetDatapointDescription request. If an error is detected during the request
         processing, the server sends a negative response
-        (number of data points == 0).
+        (number of Datapoints == 0).
 
         @param telegram: KNX BAOS ObjectServer telegram
         @type telegram: byte array
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < GET_DP_DES_MIN_LEN:
+        if len(telegram) < GET_DP_DES_MIN_LEN:
+            self._logger.error("_onGetDatapointDescriptionRes(): telegram too short")
             return
 
         startDatapoint = telegram[GET_DP_DES_POS_START]
         numberOfDatapoints = telegram[GET_DP_DES_POS_NR]
+        self._logger.debug("_onGetDatapointDescriptionRes(): startDataPoint={}, numberOfDataPoints={}".format(startDatapoint, numberOfDatapoints))
 
         if numberOfDatapoints == 0:
             errorCode = telegram[GET_DP_DES_POS_ERROR]
+            self._logger.error("_onGetDatapointDescriptionRes(): telegram error {}".format(errorCode))
             self._listener.handleError(errorCode)
             return
 
-        pData = &telegram[GET_DP_DES_POS_ARRAY]  # set to first data point
+        # Iterate over all Datapoints in service
+        index = GET_DP_DES_POS_ARRAY  # point to first Datapoint
+        for i in range(numberOfDatapoints):
+            dpId = startDatapoint + i
+            dpValueLength = telegram[index]
+            dpConfigFlags = telegram[index+1]
 
-        for in i range(numberOfDatapoints):  # for all data points in service
-            nDpValueLength = *pData++  # extract length of data point
-            nDpConfigFlags = *pData++  # extract flags of data point
+            # Call listener handler
+            self._listener.handleGetDatapointDescriptionRes(dpId, dpValueLength, dpConfigFlags)
 
-            self._listener.handleGetDatapointDescriptionRes(startDatapoint, nDpValueLength, nDpConfigFlags)
+            # Set index to next Datapoint
+            index += 2
 
     def _onGetDescriptionStringRes(self, telegram):
         """ Handle the GetDescriptionString.Res telegram
@@ -202,60 +224,75 @@ class KnxBaosHandler:
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < GET_DES_STR_MIN_LEN:
+        if len(telegram) < GET_DES_STR_MIN_LEN:
+            self._logger.error("_onGetDescriptionStringRes(): telegram too short")
             return
 
-        nStartString = telegram[GET_DES_STR_POS_START]
-        nNumberOfStrings = telegram[GET_DES_STR_POS_NR]
+        startString = telegram[GET_DES_STR_POS_START]
+        numberOfStrings = telegram[GET_DES_STR_POS_NR]
+        self._logger.debug("_onGetDescriptionStringRes(): startString={}, numberOfStrings={}".format(startString, numberOfStrings))
 
         if nNumberOfStrings == 0:
             errorCode = telegram[GET_DES_STR_POS_ERROR]
+            self._logger.error("_onGetDescriptionStringRes(): telegram error {}".format(errorCode))
             self._listener.handleError(errorCode)
             return
 
-        pData = &telegram[GET_DES_STR_POS_ARRAY]  # set to first string
+        # Iterate over all Strings in service
+        index = GET_DES_STR_POS_ARRAY  # point to first String
+        for i in range(nNumberOfStrings):
+            dpId = startString + i
+            endStr = telegram[index:].find('\x00')
+            dpDescriptionStr = telegram[index:index+endStr]
 
-        for i in range(nNumberOfStrings):  # for all strings in service
-            strDpDescription = pData
+            # Call listener handler
+            self._listener.handleGetDescriptionStringRes(dpId, dpDescriptionStr)
 
-            for(nDpDescriptionLength = 0 *pData++ != 0 nDpDescriptionLength++):  # extract flags of string
-                pass
-
-            self._listener.handleGetDescriptionStringRes(nStartString, strDpDescription, nDpDescriptionLength)
+            # Set index to next String
+            index += len(dpDescriptionStr) + 1
 
     def _onGetDatapointValueRes(self, telegram):
         """ Handle the GetDatapointValue.Res telegram
 
         This response is sent by the server as reaction to the GetDatapointValue
         request. If an error is detected during the processing of the request, the
-        server sends a negative response (number of data points == 0).
+        server sends a negative response (number of Datapoints == 0).
 
         @param telegram: KNX BAOS ObjectServer telegram
         @type telegram: byte array
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < GET_DP_VAL_MIN_LEN:
+        if len(telegram) < GET_DP_VAL_MIN_LEN:
+            self._logger.error("_onGetDatapointValueRes(): telegram too short")
             return
 
         startDatapoint = telegram[GET_DP_VAL_POS_START]
         numberOfDatapoints = telegram[GET_DP_VAL_POS_NR]
+        self._logger.debug("_onGetDatapointValueRes(): startDatapoint={}, numberOfDatapoints={}".format(startString, numberOfStrings))
 
         if numberOfDatapoints == 0:
             errorCode = telegram[GET_DP_VAL_POS_ERROR]
+            self._logger.error("_onGetDatapointValueRes(): telegram error {}".format(errorCode))
             self._listener.handleError(errorCode)
             return
 
-        pData = &telegram[GET_DP_VAL_POS_ARRAY]  # set to first data point
+        # Iterate over all Datapoints in service
+        index = GET_DP_VAL_POS_ARRAY  # point to first Datapoint
+        for i in range(numberOfDatapoints):
+            dpId = telegram[index]
+            dpStateLength = telegram[index+1]
+            dpState  = dpStateLength >> 4
+            dpLength = dpStateLength & 0x0f
+            #@todo: use custom object, like for pKNyX flags
 
-        for in i range(numberOfDatapoints):  # for all data points in service
-            dpId      = *pData++  # extract ID of data point
-            dpState  = (*pData) >> 4  # extract state of data point
-            dpLength = (*pData++) & 0x0f  # extract length of data point
+            dpData = telegram[index+2:index+2+dpLength]
 
-            self._listener.handleGetDatapointValueRes(startDatapoint, dpId, dpState, dpLength, pData)
+            # Call listener handler
+            self._listener.handleGetDatapointValueRes(dpId, dpState, dpData)
 
-            pData += dpLength  # set pointer to next item
+            # Set index to next Datapoint
+            index += 2 + dpLength
 
 
 
@@ -263,7 +300,7 @@ class KnxBaosHandler:
     def _onDatapointValueInd(self, telegram):
         """ Handle the DatapointValue.Ind telegram
 
-        This indication is sent asynchronously by the server if the data point(s)
+        This indication is sent asynchronously by the server if the Datapoint(s)
         value is changed.
 
         @param telegram: KNX BAOS ObjectServer telegram
@@ -271,20 +308,20 @@ class KnxBaosHandler:
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < DP_VAL_MIN_LEN:
+        if len(telegram) < DP_VAL_MIN_LEN:
             return
 
         numberOfDatapoints = telegram[DP_VAL_POS_NR]
-        pData = &telegram[DP_VAL_POS_ARRAY]
+        data = &telegram[DP_VAL_POS_ARRAY]
 
-        for in i range(numberOfDatapoints):  # for all data points in service
-            dpId      = *pData++  # extract ID of data point
-            dpState  = (*pData) >> 4  # extract state of data point
-            dpLength = (*pData++) & 0x0f  # extract length of data point
+        for i in range(numberOfDatapoints):  # for all Datapoints in service
+            dpId      = *data++  # extract ID of Datapoint
+            dpState  = (*data) >> 4  # extract state of Datapoint
+            dpLength = (*data++) & 0x0f  # extract length of Datapoint
 
-            self._listener.handleDatapointValueInd(dpId, dpState, dpLength, pData)
+            self._listener.handleDatapointValueInd(dpId, dpState, dpLength, data)
 
-            pData += dpLength  # set pointer to next item
+            data += dpLength  # set pointer to next Item
 
 
 
@@ -301,7 +338,7 @@ class KnxBaosHandler:
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < SET_DP_VAL_MIN_LEN:
+        if len(telegram) < SET_DP_VAL_MIN_LEN:
             return
 
         startDatapoint = telegram[SET_DP_VAL_POS_START]
@@ -325,7 +362,7 @@ class KnxBaosHandler:
         """
 
         # Check the length of telegram
-        if telegram[POS_LENGTH] < DP_VAL_MIN_LEN:
+        if len(telegram) < DP_VAL_MIN_LEN:
             return
 
         nStartByte = telegram[GET_PAR_BYTE_POS_START]
@@ -336,8 +373,8 @@ class KnxBaosHandler:
             self._listener.handleError(errorCode)
             return
 
-        pData = &telegram[GET_PAR_BYTE_POS_ARRAY]  # set to first byte
+        data = &telegram[GET_PAR_BYTE_POS_ARRAY]  # set to first byte
 
         for i in range(nNumberOfBytes):  # for all bytes in service
-            nByte = *pData++  # extract ID of data point
+            nByte = *data++  # extract ID of Datapoint
             self._listener.handleGetParameterByteRes(nStartByte+i, nByte)

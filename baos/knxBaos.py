@@ -15,12 +15,11 @@ EMI2_L_RESET_IND = 0xA0
 MAX_FRAME_LENGTH = 128  # max. length of KNX data frame
 
 # Byte position in Object Server Protocol
-POS_LENGTH = 0  # length of service
-POS_MAIN_SERV = 1  # main service code
-POS_SUB_SERV = 2  # sub service code
-POS_STR_DP = 3  # start Datapoint
-POS_NR_DP = 4  # number of Datapoints
-POS_FIRST_DP_ID = 5  # first Datapoint
+POS_MAIN_SERV = 0  # main service code
+POS_SUB_SERV = 1  # sub service code
+POS_STR_DP = 2  # start Datapoint
+POS_NR_DP = 3  # number of Datapoints
+POS_FIRST_DP_ID = 4  # first Datapoint
 
 FT12_START_FIX_FRAME = 0x10  # start byte for frames with fixed length
 FT12_START_VAR_FRAME = 0x68  # start byte for frames with variable length
@@ -123,11 +122,6 @@ OBJ_SERV_BUF_SIZE = MAX_FRAME_LENGTH
 
 
 class TimeoutError(Exception):
-    """
-    """
-
-
-class KnxBaosHandler:
     """
     """
 

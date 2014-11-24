@@ -1,5 +1,7 @@
+from knxBaosListener import KnxBaosListener
 
 
-class KnxBaosApp:
-    """"""
+class KnxBaosApp(KnxBaosListener):
+    """
+    """
 
