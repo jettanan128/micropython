@@ -11,11 +11,11 @@ Ported to micropython by Frederic Mantegazza, november, 2014
 """
 
 import math
+import logging
+
+import uasyncio.core as asyncio
 import pyb
 import gc
-
-import logging
-import uasyncio.core as asyncio
 
 
 # Clock pulse timing (us)
@@ -450,15 +450,6 @@ class SHT15:
         Soft reset returns sensor status register to default values
         """
         self._initSensor()
-
-
-        def main():
-            sht15 = SHT15WithCrc('Y11', 'Y12')
-            print(sht15.measure())
-
-
-        if __name__ == "__main__":
-            main()
 
 
 def main():
