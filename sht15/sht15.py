@@ -369,13 +369,14 @@ class SHT15:
 
         return True
 
+    @asyncio.coroutine
     def _waitForMeasureReady(self, timeout=720):
         """ wait for non blocking measure to complete
 
         raise: TimeoutError
         """
         while True:
-            if self._measureReady():
+            if self._isMeasureReady():
                 return
             if pyb.elapsed_millis(self._measureInitiatedAt) >= timeout:
                 raise Timeout("timeout while waiting for measure")
@@ -435,12 +436,20 @@ class SHT15:
         @rtype: tuple of 3 float
         """
         self._initiateMeasure('temp')
-        self._waitForMeasureReady()
-        self._rawDataTemp = self._readData()
+        #self._waitForMeasureReady()  # does not work outside EventLoop, as it is a coroutine!
+        pyb.delay(720)
+        if self._isMeasureReady():
+            self._rawDataTemp = self._readData()
+        else:
+            raise InvalidMeasure("measure not ready")
 
         self._rawDataHumi = self._initiateMeasure('humi')
-        self._waitForMeasureReady()
-        self._rawDataHumi = self._readData()
+        #self._waitForMeasureReady()  # does not work outside EventLoop, as it is a coroutine!
+        pyb.delay(720)
+        if self._isMeasureReady():
+            self._rawDataHumi = self._readData()
+        else:
+            raise InvalidMeasure("measure not ready")
 
         return self.temperature, self.humidity, self.dewPoint
 
