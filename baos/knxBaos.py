@@ -21,35 +21,14 @@ POS_STR_DP = 2  # start Datapoint
 POS_NR_DP = 3  # number of Datapoints
 POS_FIRST_DP_ID = 4  # first Datapoint
 
-FT12_START_FIX_FRAME = 0x10  # start byte for frames with fixed length
-FT12_START_VAR_FRAME = 0x68  # start byte for frames with variable length
-FT12_CONTROL_SEND = 0x53  # control field for sending udata to module
-FT12_CONTROL_RCV_MASK = 0xdf  # mask to check Control field for receiving
-FT12_CONTROL_RCV = 0xd3  # control field for receiving udata to module
-FT12_END_CHAR = 0x16  # the end character for FT1.2 protocol
-FT12_FCB_MASK = 0x20  # mask to get fcb byte in control field
-#FT12_LAST_SEND_FCB = m_nLastSendFcb  # the last frame count bit for sending
-#FT12_NEXT_SEND_FCB = (m_nLastSendFcb ^= 0x20)  # the next frame count bit for sending
-#FT12_LAST_RCV_FCB = m_nLastRcvFcb  # the last frame count bit for receiving
-#FT12_NEXT_RCV_FCB = (m_nLastRcvFcb ^= 0x20)  # the next frame count bit for receiving
-FT12_ACK = 0xe5  # acknowledge byte for FT1.2 protocol
-
-# Control bytes for fixed length telegrams
-FT12_RESET_IND = 0xc0  # reset indication
-FT12_RESET_REQ = 0x40  # control field for sending a reset request to BAU
-FT12_STATUS_REQ = 0x49  # status request
-FT12_STATUS_RES = 0x8b  # respond status
-FT12_CONFIRM_ACK = 0x80  # confirm acknowledge
-FT12_CONFIRM_NACK = 0x81  # confirm not acknowledge
-
 # Defines for object server protocol
-BAOS_MAIN_SRV = 0xF0  # main service code for all BAOS services
+BAOS_MAIN_SRV = 0xf0  # main service code for all BAOS services
 BAOS_RESET_SRV = 0xa0  # reset/reboot service code
 
-BAOS_SUB_TYPE_MASK = 0xC0  # mask for sub service type
+BAOS_SUB_TYPE_MASK = 0xc0  # mask for sub service type
 BAOS_SUB_TYPE_REQ = 0x00  # sub service type request
 BAOS_SUB_TYPE_RES = 0x80  # sub service type response
-BAOS_SUB_TYPE_IND = 0xC0  # sub service type indication
+BAOS_SUB_TYPE_IND = 0xc0  # sub service type indication
 
 
 BAOS_GET_SRV_ITEM_REQ = 0x01  # GetServerItem.Req
@@ -67,7 +46,7 @@ BAOS_GET_DESCR_STR_RES = 0x84  # GetDescriptionString.Res
 BAOS_GET_DP_VALUE_REQ = 0x05  # GetDatapointValue.Req
 BAOS_GET_DP_VALUE_RES = 0x85  # GetDatapointValue.Res
 
-BAOS_DP_VALUE_IND = 0xC1  # DatapointValue.Ind
+BAOS_DP_VALUE_IND = 0xc1  # DatapointValue.Ind
 
 BAOS_SET_DP_VALUE_REQ = 0x06  # SetDatapointValue.Req
 BAOS_SET_DP_VALUE_RES = 0x86  # SetDatapointValue.Res
@@ -93,7 +72,7 @@ DP_DES_FLAG_reserved = 0x20  # reserved
 DP_DES_FLAG_CTR = 0x40  # clients transmit request processed
 DP_DES_FLAG_UOR = 0x80  # update on response enabled
 
-# Item ID's used in Get-/SetDeviceItem services
+# Item ID's used in Get/SetDeviceItem services
 ID_NONE = 0
 ID_HARDWARE_TYPE = 1
 ID_HARDWARE_VER = 2
@@ -129,73 +108,59 @@ class TimeoutError(Exception):
 class KnxBaos:
     """
     """
-    def __init__(self, uart=2):
+    def __init__(self, listener):
         """
         """
-        self._uart = pyb.UART(uart)
-        self._uart.init(19200, bits=8, parity=0, stop=1)
+        self._handler = KnxBaosHandler(listener)
 
-        self._logger = logging.getLogger("baos")
+        self._inQueue = heapq()
+        self._outQueue = heapq()
 
-        self._lastSendFcb_ = 0x00
-        self._lastRecvFcb_ = 0x00
+        self._baosFT12 = KnxBaosFT12(self)
 
-    @property
-    def _lastSendFcb(self):
-        self._lastSendFcb_ ^= FT12_FCB_MASK
-        return self._lastSendFcb_
+    @asyncio.coroutine
+    def _loop(self):
+        """ Poll inQueue et appelle handler.receiveCallback()
+        """
+        while True:
 
-    @property
-    def _lastRecvFcb(self):
-        self._lastRecvFcb_ ^= FT12_FCB_MASK
-        return self._lastRecvFcb_
+            asyncio.sleep(10)
 
-    def _devodeFrame(self, data):
+    def start(self, loop):
+        """ Start internal loop
+        """
+        self._baosFT12.start()
+
+        loop.add_task(self._loop())
+
+    def putInMessage(self, message):
+        """ Store message to _inQueue
+        """
+
+    def getOutMessage(self):
+        """ Attend un message depuis _outQueue
+
+        Les messages sont mis par les .Req, reset...
+        """
+
+    def reset(self):
         """
         """
-        header
+
+    def getServerItemReq(self, startItem, numberOfItems):
+        """
+        """
+
 
     def resetDevice(self):
         """ Reset KnxBaos device
         """
         data = chr(FT12_START_FIX_FRAME) + chr(FT12_RESET_REQ) + chr(FT12_RESET_REQ) + chr(FT12_END_CHAR)
-        self._logger.debug("KnxBaos.reset(): send data={}".format(repr(data)))
+        self._logger.debug("reset(): send data={}".format(repr(data)))
         self._uart.write(data)
         pyb.delay(10)
         ack = self._uart.readchar()
         self._logger.debug("reset: received ack={}".format(hex(ack)))
-
-    @asyncio.coroutine
-    def receiveLoop(self):
-        """
-        """
-        while True:
-            try:
-
-                # If data available, read complete frame
-                if self._uart.any():
-                    data = ""
-                    while True:
-                        c = self._uart.readchar()
-                        data += chr(c)
-                        if c == FT12_END_CHAR:
-                            break
-
-                    # Send ACK
-                    self._uart.writechar(FT12_ACK)
-
-                    self._logger.debug("KnxBaos.receiveLoop(): data={}".format(repr(data)))
-
-                    # Decode frame
-                    controlField, message = self._decodeFrame(data)
-
-                    # Dispatch service
-
-                asyncio.sleep(10)
-
-            except Exception as e:
-                self._logger.debug("KnxBaos.receiveLoop()")
-                self._logger.debug(e)
 
 
     def getParam(self, first, nb=1):
@@ -207,7 +172,6 @@ class KnxBaos:
                                 ## 0 = BAOS module to hos (application)
                                 ## Really???!!???
         controlField = 0x53 + self._lastSendFcb
-
 
         # Send BAOS message
         main = '\xf0'
@@ -237,7 +201,6 @@ class KnxBaos:
         # Read answer
         pyb.delay(50)
         self.listen()
-
 
     def getDatapoint(self, first, nb=1):
         # send FT1.2 control field
@@ -276,43 +239,3 @@ class KnxBaos:
         # Read answer
         pyb.delay(50)
         self.listen()
-
-
-class KnxBaosApplication:
-    """
-    """
-
-
-
-
-
-class MyEventLoop(asyncio.EventLoop):
-    def time(self):
-        return pyb.millis()
-
-    def wait(self, delay):
-        asyncio.log.debug("Sleeping for: %s", delay)
-        start = pyb.millis()
-        while pyb.elapsed_millis(start) < delay:
-            gc.collect()
-            pyb.delay(10)
-
-asyncio._event_loop_class = MyEventLoop
-
-
-def main():
-    loop = asyncio.get_event_loop()
-
-    baos = KnxBaos()
-    baos.reset()
-
-    #baos.getParam(1)
-    #baos.getDatapoint(1)
-
-    loop.create_task(baos.receiveLoop())
-
-    loop.run_forever()
-
-
-if __name__ == "__main__":
-    main()
