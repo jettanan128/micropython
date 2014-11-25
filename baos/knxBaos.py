@@ -9,7 +9,7 @@ import uasyncio.core as asyncio
 
 # Service code for KNX EMI2
 # Reset used for fixed frame telegrams transmitted in packets of length 1
-EMI2_L_RESET_IND = 0xA0
+EMI2_L_RESET_IND = 0xa0
 
 # Standard KNX frame, inclusive bus monitor mode!
 MAX_FRAME_LENGTH = 128  # max. length of KNX data frame
@@ -98,11 +98,6 @@ OBJSRV_BAUD_NEW = 0x80
 
 # Buffer size to handle server objects with the FT1.2 driver
 OBJ_SERV_BUF_SIZE = MAX_FRAME_LENGTH
-
-
-class TimeoutError(Exception):
-    """
-    """
 
 
 class KnxBaos:

@@ -5,20 +5,15 @@ import struct
 import logging
 import uasyncio.core as asyncio
 
+from knxBaosFT12Header import KnxBaosFT12Header
+
 
 # Service code for KNX EMI2
 # Reset used for fixed frame telegrams transmitted in packets of length 1
-EMI2_L_RESET_IND = 0xA0
+EMI2_L_RESET_IND = 0xa0
 
 # Standard KNX frame, inclusive bus monitor mode!
 MAX_FRAME_LENGTH = 128  # max. length of KNX data frame
-
-# Byte position in Object Server Protocol
-POS_MAIN_SERV = 0  # main service code
-POS_SUB_SERV = 1  # sub service code
-POS_STR_DP = 2  # start Datapoint
-POS_NR_DP = 3  # number of Datapoints
-POS_FIRST_DP_ID = 4  # first Datapoint
 
 FT12_START_FIX_FRAME = 0x10  # start byte for frames with fixed length
 FT12_START_VAR_FRAME = 0x68  # start byte for frames with variable length
@@ -41,59 +36,6 @@ FT12_STATUS_RES = 0x8b  # respond status
 FT12_CONFIRM_ACK = 0x80  # confirm acknowledge
 FT12_CONFIRM_NACK = 0x81  # confirm not acknowledge
 
-# Defines for object server protocol
-BAOS_MAIN_SRV = 0xf0  # main service code for all BAOS services
-BAOS_RESET_SRV = 0xa0  # reset/reboot service code
-
-BAOS_SUB_TYPE_MASK = 0xc0  # mask for sub service type
-BAOS_SUB_TYPE_REQ = 0x00  # sub service type request
-BAOS_SUB_TYPE_RES = 0x80  # sub service type response
-BAOS_SUB_TYPE_IND = 0xc0  # sub service type indication
-
-# Defines for commands used by data point services
-DP_CMD_NONE = 0x00  # do nothing
-DP_CMD_SET_VAL = 0x01  # change value in data point
-DP_CMD_SEND_VAL = 0x02  # send the current value on the bus
-DP_CMD_SET_SEND_VAL = 0x03  # change value and send it on the bus
-DP_CMD_SEND_READ_VAL = 0x04  # send a value read to the bus
-DP_CMD_CLEAR_STATE = 0x05  # clear the state of a data point
-
-# Defines for DatapointDescription configuration flags
-DP_DES_FLAG_PRIO = 0x03  # transmit priority
-DP_DES_FLAG_COM = 0x04  # Datapoint communication enabled
-DP_DES_FLAG_READ = 0x08  # read from bus enabled
-DP_DES_FLAG_WRITE = 0x10  # write from bus enabled
-DP_DES_FLAG_reserved = 0x20  # reserved
-DP_DES_FLAG_CTR = 0x40  # clients transmit request processed
-DP_DES_FLAG_UOR = 0x80  # update on response enabled
-
-# Item ID's used in Get/SetDeviceItem services
-ID_NONE = 0
-ID_HARDWARE_TYPE = 1
-ID_HARDWARE_VER = 2
-ID_FIRMWARE_VER = 3
-ID_MANUFACT_SYS = 4
-ID_MANUFACT_APP = 5
-ID_APP_ID = 6
-ID_APP_VER = 7
-ID_SERIAL_NUM = 8
-ID_TIME_RESET = 9
-ID_BUS_STATE = 10
-ID_MAX_BUFFER = 11
-ID_STRG_LEN = 12
-ID_BAUDRATE = 13
-ID_BUFFER_SIZE = 14
-ID_PROG_MODE = 15
-
-# Objects server baud rates
-OBJSRV_BAUD_UNKNOWN = 0x00
-OBJSRV_BAUD_19K2 = 0x01
-OBJSRV_BAUD_115K2 = 0x02
-OBJSRV_BAUD_NEW = 0x80
-
-# Buffer size to handle server objects with the FT1.2 driver
-OBJ_SERV_BUF_SIZE = MAX_FRAME_LENGTH
-
 
 class TimeoutError(Exception):
     """
@@ -106,25 +48,25 @@ class KnxBaosFT12:
     def __init__(self, tlsap, uartNum=2):
         """
         """
-        self_tlsap = tlsap
+        self._tlsap = tlsap  # find a better name
 
         self._logger = logging.getLogger("KnxBaosFT12")
 
         self._uart = pyb.UART(uartNum)
         self._uart.init(19200, bits=8, parity=0, stop=1)
 
-        self._lastSendFcb_ = 0x00
-        self._lastRecvFcb_ = 0x00
+        self._lastSendFcb = 0x00
+        self._lastRecvFcb = 0x00
 
     @property
-    def _lastSendFcb(self):
-        self._lastSendFcb_ ^= FT12_FCB_MASK
-        return self._lastSendFcb_
+    def _nextSendFcb(self):
+        self._lastSendFcb ^= FT12_FCB_MASK
+        return self._lastSendFcb
 
     @property
-    def _lastRecvFcb(self):
-        self._lastRecvFcb_ ^= FT12_FCB_MASK
-        return self._lastRecvFcb_
+    def _nextRecvFcb(self):
+        self._lastRecvFcb ^= FT12_FCB_MASK
+        return self._lastRecvFcb
 
     @asyncio.coroutine
     def _transmitterLoop(self):
@@ -161,22 +103,24 @@ class KnxBaosFT12:
 
                 # If data available, read complete telegram
                 if self._uart.any():
-                    telegram = ""
+                    telegram = []
                     while True:
                         c = self._uart.readchar()
-                        data += chr(c)
-                        if c == FT12_END_CHAR:
+                        telegram.append(c)
+                        if telegram[-1] == FT12_END_CHAR:
                             break
+                        #@todo: use timeout_char...
 
                     # Send ACK
                     self._uart.writechar(FT12_ACK)
 
-                    self._logger.debug("receiveLoop(): data={}".format(repr(data)))
+                    self._logger.debug("receiveLoop(): data={}".format(repr(telegram)))
 
                     # Decode frame
-                    controlField, message = self._decodeFrame(data)
+                    controlField, message = self._decodeTelegram(telegram)
 
                     # Dispatch service
+                    self._tlsap.putInMessage(message)
 
                 asyncio.sleep(10)
 
@@ -214,7 +158,7 @@ class KnxBaosFT12:
         ##controlField |= 1 << 7  # 1 = host (application) to BAOS module
                                 ### 0 = BAOS module to hos (application)
                                 ### Really???!!???
-        #controlField = 0x53 + self._lastSendFcb
+        #controlField = 0x53 + self._nextSendFcb
 
         ## Send BAOS message
         #main = '\xf0'
@@ -252,7 +196,7 @@ class KnxBaosFT12:
         ##controlField |= 1 << 7  # 1 = host (application) to BAOS module
                                 ### 0 = BAOS module to hos (application)
                                 ### Really???!!???
-        #controlField = 0x53 + self._lastSendFcb
+        #controlField = 0x53 + self._nextSendFcb
 
         ## Send BAOS message
         #main = '\xf0'
