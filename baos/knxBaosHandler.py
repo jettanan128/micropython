@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import logging
 
 from knxBaos import POS_MAIN_SERV, POS_SUB_SERV

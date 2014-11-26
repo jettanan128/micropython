@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import logging
 
 
@@ -12,6 +14,8 @@ class KnxBaosListener:
 
     def handleResetInd(self):
         """ Handle reset indication
+
+        What difference with Reset.Ind as fix frame length (0x10 0xc0 0xc0 0x16)?
 
         BAOS has been reset (could be due to a change of the parameters via ETS).
         """

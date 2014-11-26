@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import usayncio.core as asyncio
 
 from knxBaosListener import KnxBaosListener
@@ -53,11 +55,3 @@ class KnxBaosApp(KnxBaosListener):
         loop.create_task(self.loop())
 
         loop.run_forever()
-
-
-
-def main():
-
-
-if __name__ == "__main__":
-    main()

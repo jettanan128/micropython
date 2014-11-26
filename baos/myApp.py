@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import pyb
 
 import uasyncio.core as asyncio
@@ -55,6 +57,9 @@ class MyApp(KnxBaosApp):
 
             # Let some time to the KnxBaosApp to run
             asyncio.sleep(100)
+
+    def handleGetDatapointValueRes(self, dpId, dpState, dpData):
+        self.handleDatapointValueInd(self, dpId, dpState, dpData)
 
     def handleDatapointValueInd(self, dpId, dpState, dpData):
         if dpId == DP_LED0_SWITCH_I:

@@ -1,160 +1,237 @@
+# -*- coding: utf-8 -*-
+
+from knxBaosExceptions import FT12FrameError
 
 
-class KNXnetIPHeaderValueError(PKNyXValueError):
-    """
-    """
+class KnxBaosFT12Frame:
+    """ FT1.2 frame object
 
+    @ivar _payload: raw frame
+    @param _payload: list or tuple
 
-class KnxBaosFT12Header(object):
-    """ FT1.2 header object
-
-    @ivar _serviceType: Service type identifier
-    @type _serviceType: int
-
-    @ivar _totalSize: total size of the KNXNet/IP telegram
-    @type _totalSize: int
-
-    raise KNXnetIPHeaderValueError:
+    raise FT12FrameError:
     """
 
-    # Services identifier values
-    CONNECT_REQ = 0x0205
-    CONNECT_RES = 0x0206
-    CONNECTIONSTATE_REQ = 0x0207
-    CONNECTIONSTATE_RES = 0x0208
-    DISCONNECT_REQ = 0x0209
-    DISCONNECT_RES = 0x020A
-    DESCRIPTION_REQ = 0x0203
-    DESCRIPTION_RES = 0x204
-    SEARCH_REQ = 0x201
-    SEARCH_RES = 0x202
-    DEVICE_CONFIGURATION_REQ = 0x0310
-    DEVICE_CONFIGURATION_ACK = 0x0311
-    TUNNELING_REQ = 0x0420
-    TUNNELING_ACK = 0x0421
-    ROUTING_IND = 0x0530
-    ROUTING_LOST_MSG = 0x0531
+    HEADER_SIZE = 0x04
 
-    SERVICE = (CONNECT_REQ, CONNECT_RES,
-               CONNECTIONSTATE_REQ, CONNECTIONSTATE_RES,
-               DISCONNECT_REQ, DISCONNECT_RES,
-               DESCRIPTION_REQ, DESCRIPTION_RES,
-               SEARCH_REQ, SEARCH_RES,
-               DEVICE_CONFIGURATION_REQ, DEVICE_CONFIGURATION_ACK,
-               TUNNELING_REQ, TUNNELING_ACK,
-               ROUTING_IND, ROUTING_LOST_MSG
-              )
+    # Service code for KNX EMI2
+    # Reset used for fixed frame telegrams transmitted in packets of length 1
+    EMI2_L_RESET_IND = 0xa0
 
-    HEADER_SIZE = 0x06
-    KNXNETIP_VERSION = 0x10
+    # Standard KNX frame, inclusive bus monitor mode!
+    MIN_FRAME_LENGTH = 4  # 1!!! for ACK...
+    MAX_FRAME_LENGTH = 128
 
-    def __init__(self, frame=None, service=None, serviceLength=0):
-        """ Creates a new KNXnet/IP header
+    START_FIX_FRAME = 0x10  # start byte for frames with fixed length
+    START_VAR_FRAME = 0x68  # start byte for frames with variable length
+    CONTROL_SEND = 0x53  # control field for sending udata to module
+    CONTROL_RCV_MASK = 0xdf  # mask to check control field for receiving
+    CONTROL_RCV = 0xd3  # control field for receiving udata to module
+    END_CHAR = 0x16  # the end character for FT1.2 protocol
+    FCB_MASK = 0x20  # mask to get fcb byte in control field
 
-        Header can be loaded either from frame or from sratch
+    _lastSendFcb = 0x00
+    _lastRecvFcb = 0x00
 
-        @param frame: byte array with contained KNXnet/IP frame
-        @type frame: sequence
+    def __init__(self, payload=None):
+        """ Creates a new FT1.2 frame
 
-        @param service: service identifier
-        @type service: int
+        Create a KnxBaosFT12Frame from FT1.2 raw frame
 
-        @param serviceLength: length of the service structure
-        @type serviceLength: int
+        @param payload: FT1.2 raw frame
+        @type payload: list or tuple
 
-        @raise KnxNetIPHeaderValueError:
+        @raise KnxNetIPHeaderError:
         """
 
-        # Check params
-        if frame is not None and service is not None:
-            raise KNXnetIPHeaderValueError("can't give both frame and service type")
+        self._payload = payload
 
-        if frame is not None:
-            frame = bytearray(frame)
-            if len(frame) < KnxBaosFT12Header.HEADER_SIZE:
-                    raise KNXnetIPHeaderValueError("frame too short for KNXnet/IP header (%d)" % len(frame))
-
-            headersize = frame[0] & 0xff
-            if headersize != KnxBaosFT12Header.HEADER_SIZE:
-                raise KNXnetIPHeaderValueError("wrong header size (%d)" % headersize)
-
-            protocolVersion = frame[1] & 0xff
-            if protocolVersion != KnxBaosFT12Header.KNXNETIP_VERSION:
-                raise KNXnetIPHeaderValueError("unsupported KNXnet/IP protocol (%d)" % protocolVersion)
-
-            self._service = (frame[2] & 0xff) << 8 | (frame[3] & 0xff)
-            if self._service not in KnxBaosFT12Header.SERVICE:
-                raise KNXnetIPHeaderValueError("unsupported service (%d)" % self._service)
-
-            self._totalSize = (frame[4] & 0xff) << 8 | (frame[5] & 0xff)
-            if len(frame) != self._totalSize:
-                raise KNXnetIPHeaderValueError("wrong frame length (%d; should be %d)" % (len(frame), self._totalSize))
-
-        elif service is not None:
-            if service not in KnxBaosFT12Header.SERVICE:
-                raise KNXnetIPHeaderValueError("unsupported service (%d)" % self._service)
-            if not serviceLength:
-                raise KNXnetIPHeaderValueError("service length missing")
-            self._service = service
-            self._totalSize = KnxBaosFT12Header.HEADER_SIZE + serviceLength
-
-        else:
-            raise KNXnetIPHeaderValueError("must give either frame or service type")
-
-    def __repr__(self):
-        s = "<KnxBaosFT12Header(service='%s', totalSize=%d)>" % (self.serviceName, self._totalSize)
-        return s
+        self._checkValidity()
 
     def __str__(self):
-        s = "<KnxBaosFT12Header('%s')>" % self.serviceName
-        return s
+        return "<KnxBaosFT12Frame({})>".format(self._payload)
 
-    @property
-    def service(self):
-        return self._service
+    @staticmethod
+    def createFromTelegram(self, telegram):
+        """ Create frame from telegram
 
-    @property
-    def totalSize(self):
-        return self._totalSize
-
-    @property
-    def frame(self):
-        s = struct.pack(">2B2H", KnxBaosFT12Header.HEADER_SIZE, KnxBaosFT12Header.KNXNETIP_VERSION, self._service, self._totalSize)
-        return bytearray(s)
-
-    @property
-    def serviceName(self):
-        if self._service == KnxBaosFT12Header.CONNECT_REQ:
-            return "connect.req"
-        elif self._service == KnxBaosFT12Header.CONNECT_RES:
-            return "connect.res"
-        elif self._service == KnxBaosFT12Header.CONNECTIONSTATE_REQ:
-            return "connectionstate.req"
-        elif self._service == KnxBaosFT12Header.CONNECTIONSTATE_RES:
-            return "connectionstate.res"
-        elif self._service == KnxBaosFT12Header.DISCONNECT_REQ:
-            return "disconnect.req"
-        elif self._service == KnxBaosFT12Header.DISCONNECT_RES:
-            return "disconnect.res"
-        elif self._service == KnxBaosFT12Header.DESCRIPTION_REQ:
-            return "description.req"
-        elif self._service == KnxBaosFT12Header.DESCRIPTION_RES:
-            return "description.res"
-        elif self._service == KnxBaosFT12Header.SEARCH_REQ:
-            return "search.req"
-        elif self._service == KnxBaosFT12Header.SEARCH_RES:
-            return "search.res"
-        elif self._service == KnxBaosFT12Header.DEVICE_CONFIGURATION_REQ:
-            return "device-configuration.req"
-        elif self._service == KnxBaosFT12Header.DEVICE_CONFIGURATION_ACK:
-            return "device-configuration.ack"
-        elif self._service == KnxBaosFT12Header.TUNNELING_REQ:
-            return "tunneling.req"
-        elif self._service == KnxBaosFT12Header.TUNNELING_ACK:
-            return "tunneling.ack"
-        elif self._service == KnxBaosFT12Header.ROUTING_IND:
-            return "routing.ind"
-        elif self._service == KnxBaosFT12Header.ROUTING_LOST_MSG:
-            return "routing-lost.msg"
+        Depending of first char, it build a fxed length frame, or a variable length frame.
+        """
+        if telegram[0] == KnxBaosFT12Frame.START_FIX_FRAME:
+            frame = KnxBaosFT12FixFrame(telegram)
+        elif telegram[0] == KnxBaosFT12Frame.START_VAR_FRAME:
+            frame = KnxBaosFT12VarFrame(telegram)
         else:
-            return "unknown/unsupported service"
+            raise FT12FrameError("invalid start char ({})".format(hex(telegram[0])))
+
+        return frame
+
+    @staticmethod
+    def createMessageFrame(self, message):
+        """ Create a standard message frame
+
+        This frame is variable length.
+        This static method build the complete raw frame from given message.
+
+        @param message: message to encapsulate
+        @type message: list or tuple
+        """
+        frame = KnxBaosFT12VarFrame()
+
+        header = (KnxBaosFT12Frame.START_VAR_FRAME, len(message)+1, len(message)+1, KnxBaosFT12Frame.START_VAR_FRAME)
+        controlField = KnxBaosFT12Frame.CONTROL_SEND | self._nextSendFcb
+        checkSum = self.computeChecksum(controlField, message)
+
+        frame._payload = header + (controlField,) + message + (checkSum, KnxBaosFT12Frame.END_CHAR)
+
+        return frame
+
+    @staticmethod
+    def createResetFrame(self):
+        """ Create a reset frame
+
+        This frame is fixed length.
+        """
+        frame = KnxBaosFT12Frame()
+        frame._payload = (KnxBaosFT12Frame.START_FIX_FRAME, KnxBaosFT12.RESET_REQ, KnxBaosFT12Frame.RESET_REQ, KnxBaosFT12Frame.END_CHAR)
+
+        return frame
+
+    @property
+    def _nextSendFcb(self):
+        nextSendFcb = KnxBaosFT12Frame._lastSendFcb
+        KnxBaosFT12Frame._lastSendFcb ^= KnxBaosFT12Frame.FCB_MASK
+        return nextSendFcb
+
+    @property
+    def _nextRecvFcb(self):
+        nextRecvFcb = KnxBaosFT12Frame._lastRecvFcb
+        KnxBaosFT12Frame._lastRecvFcb ^= KnxBaosFT12Frame.FCB_MASK
+        return nextRecvFcb
+
+    @property
+    def payload(self):
+        return self._payload
+
+    @property
+    def header(self):
+        return self._payload[:4]
+
+    def _checkValidity(self):
+        """ Check if frame is valid
+        """
+
+        # Check frame length
+        if not KnxBaosFT12Frame.MIN_FRAME_LENGTH < len(self._payload) < KnxBaosFT12Frame.MAX_FRAME_LENGTH:
+            raise FT12FrameError("invalid frame length ({}, should be 4)".format(len(self.header)))
+
+        # Check end field
+        if self._payload[-1] != KnxBaosFT12Frame.END_CHAR:
+            raise FT12FrameError("invalid end char ({})".format(self._payload[-1]))
+
+        # Check header second/third char (should be the same)
+        if self.header[1] != self.header[2]:
+            raise FT12FrameError("invalid header ({}, should be 4)".format(self.header))
+
+    def resetFcb(self):
+        """ Reset FCB
+        """
+        KnxBaosFT12Frame._nextSendFcb = 0x00
+        KnxBaosFT12Frame._nextRecvFcb = 0x00
+
+
+class KnxBaosFT12FixFrame(KnxBaosFT12Frame):
+    """ FT1.2 fixed length frame object
+    """
+    # Control bytes for fixed length telegrams
+    RESET_REQ = 0x40  # send a reset request to BAU
+    RESET_IND = 0xc0  # reset indication
+    STATUS_REQ = 0x49  # status request
+    STATUS_RES = 0x8b  # respond status
+    CONFIRM_ACK = 0x80  # confirm acknowledge
+    CONFIRM_NACK = 0x81  # confirm not acknowledge
+
+    @property
+    def controlByte(self):
+        """ Return control byte
+        """
+        return self.header[1]
+
+    def _checkValidity(self):
+        """ Check if frame is valid
+        """
+        super(KnxBaosFT12FixFrame, self)._checkValidity()
+
+        if self.header[0] == KnxBaosFT12Frame.START_FIX_FRAME:
+            if self.controlByte not in (KnxBaosFT12FixFrame.RESET_REQ,
+                                        KnxBaosFT12FixFrame.RESET_IND,
+                                        KnxBaosFT12FixFrame.STATUS_REQ,
+                                        KnxBaosFT12FixFrame.STATUS_RES,
+                                        KnxBaosFT12FixFrame.CONFIRM_ACK,
+                                        KnxBaosFT12FixFrame.CONFIRM_NACK):
+                raise FT12FrameError("invalid fixed frame control byte ({})".format(hex(self.controlByte)))
+
+        else:
+            raise FT12FrameError("invalid frame type ({})".format(hex(self.header[0])))
+
+class KnxBaosFT12VarFrame(KnxBaosFT12Frame):
+    """ FT1.2 variable length frame object
+    """
+
+    @property
+    def controlField(self):
+        try:
+            return self._payload[4]
+        except IndexError:
+            raise FT12FrameError("frame too short")
+
+    @property
+    def checkSum(self):
+        return self._payload[-2]
+
+    @property
+    def computedChecksum(self):
+        checkSum = self.controlField
+        for c in self.message:
+            checkSum += c
+        checkSum %= 0x100
+
+        return checksum
+
+    @property
+    def message(self):
+        return self._payload[5:-2]
+
+    def _checkValidity(self):
+        """ Check if frame is valid
+        """
+        super(KnxBaosFT12FixFrame, self)._checkValidity()
+
+        if self.header[0] == KnxBaosFT12Frame.START_VAR_FRAME:
+
+            # Check header
+            if self.header[-1] != KnxBaosFT12Frame.START_VAR_FRAME or \
+               self.header[1] != self.header[2]:
+                raise FT12FrameError("invalid variable frame header ({})".format(self.header))
+
+            # Check message length
+            if len(self.message) != self.header[1]:
+                raise FT12FrameError("invalid message length ({}, should be {})".format(len(self.message), self.header[1]))
+
+            # Check controlField
+            # TODO
+
+            # Check checksum
+            if self.computedChecksum != self.checksum:
+                raise FT12FrameError("invalid checksum ({}, should be {})".format(hex(self.computedChecksum), hex(self.checksum)))
+
+        else:
+            raise FT12FrameError("invalid frame type ({})".format(hex(self.header[0])))
+
+    def computedChecksum(self, controlField, message):
+        checkSum = controlField
+        for c in message:
+            checkSum += c
+        checkSum %= 0x100
+
+        return checksum
