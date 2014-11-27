@@ -110,7 +110,7 @@ class KnxBaosListener:
         """
         self._logger.debug("handleDatapointValueInd(): dpId={}, dpState={}, dpData={}".format(dpId, dpState, repr(dpData)))
 
-    def handleSetDatapointValueRes(self startDatapoint):
+    def handleSetDatapointValueRes(self, startDatapoint):
         """ Handle the SetDatapointValue.Res data
 
         @param startDataPoint: start Datapoint from message

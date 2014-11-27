@@ -9,15 +9,14 @@ import logging
 import heapq
 import uasyncio.core as asyncio
 
+from knxBaosHandler import KnxBaosHandler
+from knxBaosFT12 import KnxBaosFT12
 from knxBaosTransmission import KnxBaosTransmission
+
 
 # Service code for KNX EMI2
 # Reset used for fixed frame telegrams transmitted in packets of length 1
 EMI2_L_RESET_IND = 0xa0
-
-# Byte position in Object Server Protocol
-POS_MAIN_SERV = 0  # main service code
-POS_SUB_SERV = 1  # sub service code
 
 # Defines for object server protocol
 BAOS_MAIN_SRV = 0xf0  # main service code for all BAOS services
@@ -103,6 +102,8 @@ class KnxBaos:
         """
         self._handler = KnxBaosHandler(listener)
 
+        self._logger = logging.getLogger("KnxBaos")
+
         self._inQueue = []
         self._outQueue = []
 
@@ -113,44 +114,49 @@ class KnxBaos:
         """ Poll inQueue et appelle handler.receiveCallback()
         """
         while True:
-            #message = self._inQueue.pop(0)
+            try:
+                message = self._inQueue.pop(0)
+                self._handler.receiveCallback(message)
+            except IndexError:
+                pass
 
-            asyncio.sleep(10)
+            yield from asyncio.sleep(10)
 
     def start(self, loop):
         """ Start internal loop
         """
-        self._baosFT12.start()
+        self._baosFT12.start(loop)
 
-        loop.add_task(self._loop())
+        loop.create_task(self._loop())
 
     def putInMessage(self, message):
         """ Store message to _inQueue
         """
-        self._inQueue.append(message)
+        self._inQueue.append(message)  # @todo: switch to transmission
+        self._logger.debug("putInMessage(): new _inQueue length is {}".format(len(self._inQueue)))
 
-    @asyncio.coroutine
     def getOutMessage(self):
-        """ Attend un message depuis _outQueue
+        """ Wait message from _outQueue
 
-        Les messages sont mis par les .Req, reset...
+        Messages are from xxx.Req
         """
-        while len(self._outQueue) == 0:
-            yield from asyncio.sleep(10)
-
-        return self._outQueue.pop(0)
+        try:
+            return self._outQueue.pop(0)
+        except IndexError:
+            return None
 
     @asyncio.coroutine
     def _sendReq(self, message):
         """
         """
-        transmission = KnxBaosTransmission(message)
-        self._outQueue.append(transmission)
+        self._outQueue.append(message)  # @todo: switch to transmission
+        #transmission = KnxBaosTransmission(message)
+        #self._outQueue.append(transmission)
 
-        while transmission.waitConfirm:
-            yield from asyncio.sleep(10)
+        #while transmission.waitConfirm:
+            #yield from asyncio.sleep(10)
 
-        return transmission.result
+        #return transmission.result
 
     def getServerItemReq(self, startItem, numberOfItems):
         """

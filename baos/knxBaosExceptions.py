@@ -1,5 +1,5 @@
 
-class KnxBaosError(exception):
+class KnxBaosError(Exception):
     """
     """
 

@@ -27,7 +27,6 @@ class KnxBaosFT12:
         self._uart = pyb.UART(uartNum)
         self._uart.init(19200, bits=8, parity=0, stop=1)
 
-    @asyncio.coroutine
     def _sendFrame(self, frame):
         """
 
@@ -39,13 +38,13 @@ class KnxBaosFT12:
 
         # Wait for ack
         startTime = pyb.millis()
-        while pyb.ellapsed_millis(startTime) < 10:
+        while pyb.elapsed_millis(startTime) < 10:
             if self._uart.any():
                 ack = self._uart.readchar()
                 self._logger.debug("_sendFrame(): received ack={}".format(hex(ack)))
                 break
             else:
-                yield from asyncio.sleep(1)
+                pyb.delay(1)
         else:
             raise TimeoutError("timeout while reading ack")
 
@@ -55,15 +54,18 @@ class KnxBaosFT12:
         """
         while True:
             try:
-                message = self._tlsap.getOutMessage()
-                frame = KnxBaosFT12Frame.createMessageFrame(message)
-                self._sendFrame(frame.payload)
+                message = self._tlsap.getOutMessage()  # @todo: switch to transmission
+                if message is not None:
+                    frame = KnxBaosFT12Frame.createMessageFrame(message)
+                    self._sendFrame(frame.payload)  # Check timeout
+                    # set transmission OK
 
-                asyncio.sleep(10)
+                yield from asyncio.sleep(10)
 
             except Exception as e:
-                self._logger.debug("receiveLoop()")
-                self._logger.debug(e)
+                #self._logger.debug("receiveLoop()")
+                #self._logger.debug(str(e))
+                raise
 
     @asyncio.coroutine
     def _receiverLoop(self):
@@ -80,7 +82,8 @@ class KnxBaosFT12:
                         telegram.append(c)
                         if telegram[-1] == KnxBaosFT12Frame.END_CHAR:
                             break
-                        #@todo: use timeout_char...
+                        pyb.delay(1)
+                        #@todo: use timeout_char?
 
                     # Send ACK
                     self._uart.writechar(KnxBaosFT12.ACK)
@@ -103,25 +106,27 @@ class KnxBaosFT12:
                                 self._logger.debug("_receiverLoop(): received {} control byte".format(hex(frame.controlByte)))
 
                         elif isinstance(frame, KnxBaosFT12VarFrame):
-                            self._tlsap.putInMessage(frame.message)
+                            self._tlsap.putInMessage(frame.message)  # @todo: switch to transmission
 
                         else:
                             self._logger.critical("unknown frame class ({})".format(repr(frame)))
 
                     except FT12FrameError:
                         self._logger.error("_receiverLoop(): invalid frame")
+                        raise
 
-                asyncio.sleep(10)
+                yield from asyncio.sleep(10)
 
             except Exception as e:
-                self._logger.error("_receiverLoop()")
-                self._logger.error(e)
+                #self._logger.error("_receiverLoop()")
+                #self._logger.error(e)
+                raise
 
     def start(self, loop):
         """ Start internal loops
         """
-        loop.add_task(self._transmitterLoop())
-        loop.add_task(self._receiverLoop())
+        loop.create_task(self._transmitterLoop())
+        loop.create_task(self._receiverLoop())
 
     def resetDevice(self):
         """ Reset KnxBaos device

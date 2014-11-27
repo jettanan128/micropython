@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import usayncio.core as asyncio
+import pyb
+import gc
+
+import uasyncio.core as asyncio
+import logging
+asyncio.log.level = logging.INFO
+
 
 from knxBaosListener import KnxBaosListener
+from knxBaos import KnxBaos
 
 
 class MyEventLoop(asyncio.EventLoop):
@@ -25,6 +32,9 @@ class KnxBaosApp(KnxBaosListener):
     def __init__(self):
         """
         """
+        super(KnxBaosApp, self).__init__()
+
+        self.baos = KnxBaos(self)
 
         self.init()
 
@@ -37,6 +47,7 @@ class KnxBaosApp(KnxBaosListener):
     def loop(self):
         """ Real app. loop (coroutine)
         """
+        raise NotImplementedError
 
     def run(self):
         """ Start event loop and so
@@ -45,12 +56,11 @@ class KnxBaosApp(KnxBaosListener):
         """
         loop = asyncio.get_event_loop()
 
-        baos = KnxBaos(self)
-        baos.reset()
+        self.baos.reset()
         #baos.getParam(1)
         #baos.getDatapoint(1)
 
-        baos.start()
+        self.baos.start(loop)
 
         loop.create_task(self.loop())
 

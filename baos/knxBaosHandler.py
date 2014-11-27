@@ -2,7 +2,15 @@
 
 import logging
 
-from knxBaos import POS_MAIN_SERV, POS_SUB_SERV
+
+# Defines for object server protocol
+# DUPLICATED FROM knxBAOS!!!!
+BAOS_MAIN_SRV = 0xf0  # main service code for all BAOS services
+BAOS_RESET_SRV = 0xa0  # reset/reboot service code
+
+# Byte position in Object Server Protocol
+POS_MAIN_SERV = 0  # main service code
+POS_SUB_SERV = 1  # sub service code
 
 BAOS_GET_SRV_ITEM_REQ = 0x01  # GetServerItem.Req
 BAOS_GET_SRV_ITEM_RES = 0x81  # GetServerItem.Res
@@ -338,7 +346,7 @@ class KnxBaosHandler:
 
         startDatapoint = message[GET_DP_VAL_POS_START]
         numberOfDatapoints = message[GET_DP_VAL_POS_NR]
-        self._logger.debug("_onDatapointValueInd(): startDatapoint={}, numberOfDatapoints={}".format(startDatapoint, numberOfStrings))
+        self._logger.debug("_onDatapointValueInd(): startDatapoint={}, numberOfDatapoints={}".format(startDatapoint, numberOfDatapoints))
 
         # Iterate over all Datapoints in service
         index = GET_DP_VAL_POS_ARRAY  # point to first Datapoint

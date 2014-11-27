@@ -46,13 +46,14 @@ class KnxBaosFT12Frame:
 
         self._payload = payload
 
-        self._checkValidity()
+        if payload is not None:
+            self._checkValidity()
 
     def __str__(self):
         return "<KnxBaosFT12Frame({})>".format(self._payload)
 
     @staticmethod
-    def createFromTelegram(self, telegram):
+    def createFromTelegram(telegram):
         """ Create frame from telegram
 
         Depending of first char, it build a fxed length frame, or a variable length frame.
@@ -67,7 +68,7 @@ class KnxBaosFT12Frame:
         return frame
 
     @staticmethod
-    def createMessageFrame(self, message):
+    def createMessageFrame(message):
         """ Create a standard message frame
 
         This frame is variable length.
@@ -79,23 +80,30 @@ class KnxBaosFT12Frame:
         frame = KnxBaosFT12VarFrame()
 
         header = (KnxBaosFT12Frame.START_VAR_FRAME, len(message)+1, len(message)+1, KnxBaosFT12Frame.START_VAR_FRAME)
-        controlField = KnxBaosFT12Frame.CONTROL_SEND | self._nextSendFcb
-        checkSum = self.computeChecksum(controlField, message)
+        controlField = KnxBaosFT12Frame.CONTROL_SEND | KnxBaosFT12VarFrame._nextSendFcb
+        checksum = KnxBaosFT12VarFrame.computeChecksum(controlField, message)
 
-        frame._payload = header + (controlField,) + message + (checkSum, KnxBaosFT12Frame.END_CHAR)
+        frame._payload = header + (controlField,) + message + (checksum, KnxBaosFT12Frame.END_CHAR)
 
         return frame
 
     @staticmethod
-    def createResetFrame(self):
+    def createResetFrame():
         """ Create a reset frame
 
         This frame is fixed length.
         """
-        frame = KnxBaosFT12Frame()
-        frame._payload = (KnxBaosFT12Frame.START_FIX_FRAME, KnxBaosFT12.RESET_REQ, KnxBaosFT12Frame.RESET_REQ, KnxBaosFT12Frame.END_CHAR)
+        frame = KnxBaosFT12FixFrame()
+        frame._payload = (KnxBaosFT12Frame.START_FIX_FRAME, KnxBaosFT12FixFrame.RESET_REQ, KnxBaosFT12FixFrame.RESET_REQ, KnxBaosFT12Frame.END_CHAR)
 
         return frame
+
+    @staticmethod
+    def resetFcb():
+        """ Reset FCB
+        """
+        KnxBaosFT12Frame._nextSendFcb = 0x00
+        KnxBaosFT12Frame._nextRecvFcb = 0x00
 
     @property
     def _nextSendFcb(self):
@@ -122,7 +130,7 @@ class KnxBaosFT12Frame:
         """
 
         # Check frame length
-        if not KnxBaosFT12Frame.MIN_FRAME_LENGTH < len(self._payload) < KnxBaosFT12Frame.MAX_FRAME_LENGTH:
+        if not KnxBaosFT12Frame.MIN_FRAME_LENGTH <= len(self._payload) <= KnxBaosFT12Frame.MAX_FRAME_LENGTH:
             raise FT12FrameError("invalid frame length ({}, should be 4)".format(len(self.header)))
 
         # Check end field
@@ -132,12 +140,6 @@ class KnxBaosFT12Frame:
         # Check header second/third char (should be the same)
         if self.header[1] != self.header[2]:
             raise FT12FrameError("invalid header ({}, should be 4)".format(self.header))
-
-    def resetFcb(self):
-        """ Reset FCB
-        """
-        KnxBaosFT12Frame._nextSendFcb = 0x00
-        KnxBaosFT12Frame._nextRecvFcb = 0x00
 
 
 class KnxBaosFT12FixFrame(KnxBaosFT12Frame):
@@ -178,6 +180,15 @@ class KnxBaosFT12VarFrame(KnxBaosFT12Frame):
     """ FT1.2 variable length frame object
     """
 
+    @staticmethod
+    def computeChecksum(controlField, message):
+        checksum = controlField
+        for c in message:
+            checksum += c
+        checksum %= 0x100
+
+        return checksum
+
     @property
     def controlField(self):
         try:
@@ -186,15 +197,15 @@ class KnxBaosFT12VarFrame(KnxBaosFT12Frame):
             raise FT12FrameError("frame too short")
 
     @property
-    def checkSum(self):
+    def checksum(self):
         return self._payload[-2]
 
     @property
-    def computedChecksum(self):
-        checkSum = self.controlField
+    def checksumComputed(self):
+        checksum = self.controlField
         for c in self.message:
-            checkSum += c
-        checkSum %= 0x100
+            checksum += c
+        checksum %= 0x100
 
         return checksum
 
@@ -215,23 +226,15 @@ class KnxBaosFT12VarFrame(KnxBaosFT12Frame):
                 raise FT12FrameError("invalid variable frame header ({})".format(self.header))
 
             # Check message length
-            if len(self.message) != self.header[1]:
-                raise FT12FrameError("invalid message length ({}, should be {})".format(len(self.message), self.header[1]))
+            if len(self.message) != self.header[1] - 1:
+                raise FT12FrameError("invalid message length ({}, should be {})".format(len(self.message), self.header[1]-1))
 
             # Check controlField
             # TODO
 
             # Check checksum
-            if self.computedChecksum != self.checksum:
-                raise FT12FrameError("invalid checksum ({}, should be {})".format(hex(self.computedChecksum), hex(self.checksum)))
+            if self.checksumComputed != self.checksum:
+                raise FT12FrameError("invalid checksum ({}, should be {})".format(hex(self.checksumComputed), hex(self.checksum)))
 
         else:
             raise FT12FrameError("invalid frame type ({})".format(hex(self.header[0])))
-
-    def computedChecksum(self, controlField, message):
-        checkSum = controlField
-        for c in message:
-            checkSum += c
-        checkSum %= 0x100
-
-        return checksum
