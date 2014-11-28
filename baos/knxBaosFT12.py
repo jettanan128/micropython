@@ -9,6 +9,7 @@ import uasyncio.core as asyncio
 
 from knxBaosExceptions import TimeoutError
 from knxBaosFT12Frame import KnxBaosFT12Frame, KnxBaosFT12FixFrame, KnxBaosFT12VarFrame, FT12FrameError
+from knxBaosTransmission import KnxBaosTransmission
 
 
 class KnxBaosFT12:
@@ -16,6 +17,7 @@ class KnxBaosFT12:
     """
 
     ACK = 0xe5  # acknowledge byte for FT1.2 protocol
+    ACK_TIMEOUT = 10  # in ms
 
     def __init__(self, tlsap, uartNum=2):
         """
@@ -38,7 +40,7 @@ class KnxBaosFT12:
 
         # Wait for ack
         startTime = pyb.millis()
-        while pyb.elapsed_millis(startTime) < 10:
+        while pyb.elapsed_millis(startTime) < KnxBaosFT12.ACK_TIMEOUT:  # TODO: adjust timeout
             if self._uart.any():
                 ack = self._uart.readchar()
                 self._logger.debug("_sendFrame(): received ack={}".format(hex(ack)))
@@ -46,7 +48,7 @@ class KnxBaosFT12:
             else:
                 pyb.delay(1)
         else:
-            raise TimeoutError("timeout while reading ack")
+            raise TimeoutError("timeout occured while reading ack")
 
     @asyncio.coroutine
     def _transmitterLoop(self):
@@ -54,17 +56,32 @@ class KnxBaosFT12:
         """
         while True:
             try:
-                message = self._tlsap.getOutMessage()  # @todo: switch to transmission
-                if message is not None:
+                transmission = self._tlsap.getOutMessage()
+
+                if transmission is not None:
+                    message = transmission.payload
                     frame = KnxBaosFT12Frame.createMessageFrame(message)
-                    self._sendFrame(frame.payload)  # Check timeout
-                    # set transmission OK
+
+                    try:
+                        self._sendFrame(frame.payload)  # TODO: check timeout
+                        transmission.result = KnxBaosTransmission.OK
+                    except TimeoutError as e:
+                        self._logger.debug("_transmitterLoop(): {}".format(e))
+                        transmission.result = KnxBaosTransmission.NO_ACK
+                    except as e:
+                        transmission.result = KnxBaosTransmission.ERROR
+                        #self._logger.debug("_transmitterLoop(): {}".format(e))
+                        raise
+
+                    if transmission.waitConfirm:
+                        transmission.waitConfirm = False
+
+                    self._logger.debu("_transmitterLoop(): transmission={}".format(transmission))
 
                 yield from asyncio.sleep(10)
 
             except Exception as e:
-                #self._logger.debug("receiveLoop()")
-                #self._logger.debug(str(e))
+                #self._logger.debug("_transmitterLoop(): {}".format(e))
                 raise
 
     @asyncio.coroutine
@@ -118,8 +135,7 @@ class KnxBaosFT12:
                 yield from asyncio.sleep(10)
 
             except Exception as e:
-                #self._logger.error("_receiverLoop()")
-                #self._logger.error(e)
+                #self._logger.debug("receiveLoop(): {}".format(e))
                 raise
 
     def start(self, loop):

@@ -16,7 +16,7 @@ from knxBaosTransmission import KnxBaosTransmission
 
 # Service code for KNX EMI2
 # Reset used for fixed frame telegrams transmitted in packets of length 1
-EMI2_L_RESET_IND = 0xa0
+#EMI2_L_RESET_IND = 0xa0
 
 # Defines for object server protocol
 BAOS_MAIN_SRV = 0xf0  # main service code for all BAOS services
@@ -131,14 +131,16 @@ class KnxBaos:
 
     def putInMessage(self, message):
         """ Store message to _inQueue
+
+        Messages are stored in _inQueue by KnxBaosFT12 receiver, and used by KnxBaos loop.
         """
-        self._inQueue.append(message)  # @todo: switch to transmission
+        self._inQueue.append(message)
         self._logger.debug("putInMessage(): new _inQueue length is {}".format(len(self._inQueue)))
 
     def getOutMessage(self):
         """ Wait message from _outQueue
 
-        Messages are from xxx.Req
+        Messages are queued by xxx.Req, and used by KnxBaosFT12 transmitter.
         """
         try:
             return self._outQueue.pop(0)
@@ -148,28 +150,35 @@ class KnxBaos:
     @asyncio.coroutine
     def _sendReq(self, message):
         """
-        """
-        self._outQueue.append(message)  # @todo: switch to transmission
-        #transmission = KnxBaosTransmission(message)
-        #self._outQueue.append(transmission)
 
-        #while transmission.waitConfirm:
-            #yield from asyncio.sleep(10)
+        @todo: add logs
+        """
+        transmission = KnxBaosTransmission(message)
+
+        for i in range(3):
+            self._outQueue.append(transmission)
+            if transmission.result == KnxBaosTransmission.OK:
+                break
+
+            while transmission.waitConfirm:
+                yield from asyncio.sleep(10)
 
         #return transmission.result
 
+    @asyncio.coroutine
     def getServerItemReq(self, startItem, numberOfItems):
         """
 
         @todo: manage for wait confirm, retry...
         """
         message = (BAOS_MAIN_SRV, BAOS_GET_SRV_ITEM_REQ, startItem, numberOfItems)
-
-        return self._sendReq(message)
+        #result = yield from self._sendReq(message)
+        yield from self._sendReq(message)
+        #return result
 
     def reset(self):
         """ Reset KnxBaos device
 
-        #! 2 kind of reset: fix frame length, and std message service...
+        # !!! 2 kind of reset: fix frame length, and std message service...
         """
         self._baosFT12.resetDevice()
