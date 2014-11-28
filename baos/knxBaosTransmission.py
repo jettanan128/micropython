@@ -6,8 +6,8 @@ from knxBaosExceptions import TransmissionError
 class KnxBaosTransmission:
     """ Transmission class
 
-    @ivar _payload:
-    @type _payload: list or tuple
+    @ivar _payload: real stuf to transmit
+    @type _payload: any
 
     @ivar _waitConfirm:
     @type _waitConfirm: bool
@@ -35,8 +35,8 @@ class KnxBaosTransmission:
     def __init__(self, payload, waitConfirm=True):
         """
 
-        @param payload:
-        @type payload: list or tuple
+        @param payload: real stuf to transmit
+        @type payload: any
 
         @param waitConfirm:
         @type waitConfirm: bool

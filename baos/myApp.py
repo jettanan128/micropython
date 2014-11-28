@@ -59,7 +59,7 @@ class MyApp(KnxBaosApp):
         prevSwitch = self._switch()
         while True:
 
-            # do somthing usefull, like check buttons, dim light...
+            # do something usefull, like check buttons, dim light...
             if self._switch() and not prevSwitch:
                 self._logger.info("loop(): switch pressed")
                 self.baos.getServerItemReq(1, 1)
