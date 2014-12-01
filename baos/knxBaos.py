@@ -102,7 +102,7 @@ class KnxBaos:
             except IndexError:
                 pass
             except Exception as e:
-                self._logger.error(str(e))
+                self._logger.error("_loop(): {}".format(str(e)))
 
             yield from asyncio.sleep(10)
 
@@ -149,7 +149,7 @@ class KnxBaos:
             if transmission.result == KnxBaosTransmission.OK:
                 break
             else:
-                self._logger.warning("_sendReq(): transmission failed ({})".format(i+1))
+                self._logger.warning("_sendReq(): transmission failed ({}). retrying...".format(i+1))
                 yield from asyncio.sleep(500)
                 # !!! FCB should not be toggled when resending frame which has not been ack
 
@@ -157,7 +157,8 @@ class KnxBaos:
             self._logger.error("_sendReq(): transmission aborted")
 
         self._logger.debug("_sendReq(): transmission={}".format(transmission))
-        #return transmission.result
+
+        return transmission.result
 
     @asyncio.coroutine
     def getServerItemReq(self, startItem, numberOfItems):

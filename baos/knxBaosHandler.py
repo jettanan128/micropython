@@ -125,10 +125,10 @@ class KnxBaosHandler:
                 self._onGetDatapointDescription2Res(message)
 
             else:
-                self._logger.warning("unknown sub-service")
+                self._logger.warning("receiveCallback:() unknown sub-service")
 
         else:
-            self._logger.warning("unknown service")
+            self._logger.warning("receiveCallback(): unknown service")
 
     def _onResetInd(self):
         """ Handle the Reset.Ind fix frame

@@ -17,7 +17,7 @@ class KnxBaosFT12:
     """
 
     ACK = 0xe5  # acknowledge byte for FT1.2 protocol
-    ACK_TIMEOUT = 10  # in ms
+    ACK_TIMEOUT = 30  # in ms
 
     def __init__(self, tlsap, uartNum=2):
         """
@@ -45,7 +45,7 @@ class KnxBaosFT12:
                 ack = self._uart.readchar()
                 self._logger.debug("_sendFrame(): received ack={}".format(hex(ack)))
                 if ack != KnxBaosFT12.ACK:
-                    self._logger.error("wrong ack char ({})".format(hex(ack)))
+                    self._logger.error("_sendFrame(): wrong ack char ({})".format(hex(ack)))
                 break
             else:
                 pyb.delay(1)
@@ -68,15 +68,14 @@ class KnxBaosFT12:
                     frame = KnxBaosFT12Frame.createMessageFrame(message)
 
                     try:
-                        self._sendFrame(frame.payload)  # TODO: check timeout
+                        self._sendFrame(frame.payload)
                         transmission.result = KnxBaosTransmission.OK
                     except TimeoutError as e:
-                        self._logger.debug("_transmitterLoop(): {}".format(e))
+                        self._logger.error("_transmitterLoop(): {}".format(str(e)))
                         transmission.result = KnxBaosTransmission.NO_ACK
                     except Exception as e:
+                        self._logger.critical("_transmitterLoop(): {}".format(str(e)))
                         transmission.result = KnxBaosTransmission.ERROR
-                        #self._logger.debug("_transmitterLoop(): {}".format(e))
-                        raise
 
                     if transmission.waitConfirm:
                         transmission.waitConfirm = False
@@ -84,8 +83,7 @@ class KnxBaosFT12:
                 yield from asyncio.sleep(10)
 
             except Exception as e:
-                #self._logger.debug("_transmitterLoop(): {}".format(e))
-                raise
+                self._logger.critical("_transmitterLoop(): {}".format(str(e)))
 
     @asyncio.coroutine
     def _receiverLoop(self):
@@ -116,13 +114,13 @@ class KnxBaosFT12:
 
                         if isinstance(frame, KnxBaosFT12FixFrame):
                             if frame.controlByte == KnxBaosFT12FixFrame.RESET_IND:
-                                self._logger.info("received Reset.Ind")
+                                self._logger.info("_receiverLoop(): received Reset.Ind")
                                 KnxBaosFT12Frame.resetFcb()
                                 # @todo: find a way to inform application
                                 self._tlsap._handler._onResetInd()  # hugly!
 
                             elif frame.controlByte == KnxBaosFT12FixFrame.STATUS_RES:
-                                self._logger.info("received Status.Res")
+                                self._logger.info("_receiverLoop(): received Status.Res")
 
                             else:
                                 self._logger.debug("_receiverLoop(): received {} control byte".format(hex(frame.controlByte)))
@@ -131,17 +129,15 @@ class KnxBaosFT12:
                             self._tlsap.putInMessage(frame.message)
 
                         else:
-                            self._logger.critical("unknown frame class ({})".format(repr(frame)))
+                            self._logger.error("_receiverLoop(): unknown frame class ({})".format(repr(frame)))
 
                     except FT12FrameError:
                         self._logger.error("_receiverLoop(): invalid frame")
-                        #raise
 
                 yield from asyncio.sleep(10)
 
             except Exception as e:
-                #self._logger.debug("receiveLoop(): {}".format(e))
-                raise
+                self._logger.critical("receiveLoop(): {}".format(str(e)))
 
     def start(self, loop):
         """ Start internal loops
@@ -157,4 +153,4 @@ class KnxBaosFT12:
             self._sendFrame(frame.payload)
             KnxBaosFT12Frame.resetFcb()
         except TimeoutError as e:
-            self._logger.debug("resetDevice(): {}".format(e))
+            self._logger.error("resetDevice(): {}".format(str(e)))
