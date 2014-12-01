@@ -12,11 +12,7 @@ class KnxBaosFT12Frame:
     raise FT12FrameError:
     """
 
-    HEADER_SIZE = 0x04
-
-    # Service code for KNX EMI2
-    # Reset used for fixed frame telegrams transmitted in packets of length 1
-    EMI2_L_RESET_IND = 0xa0
+    #HEADER_SIZE = 4
 
     # Standard KNX frame, inclusive bus monitor mode!
     MIN_FRAME_LENGTH = 4  # 1!!! for ACK...
@@ -80,7 +76,7 @@ class KnxBaosFT12Frame:
         frame = KnxBaosFT12VarFrame()
 
         header = (KnxBaosFT12Frame.START_VAR_FRAME, len(message)+1, len(message)+1, KnxBaosFT12Frame.START_VAR_FRAME)
-        controlField = KnxBaosFT12Frame.CONTROL_SEND | KnxBaosFT12VarFrame._nextSendFcb
+        controlField = KnxBaosFT12Frame.CONTROL_SEND | KnxBaosFT12VarFrame.nextSendFcb()
         checksum = KnxBaosFT12VarFrame.computeChecksum(controlField, message)
 
         frame._payload = header + (controlField,) + message + (checksum, KnxBaosFT12Frame.END_CHAR)
@@ -105,14 +101,14 @@ class KnxBaosFT12Frame:
         KnxBaosFT12Frame._nextSendFcb = 0x00
         KnxBaosFT12Frame._nextRecvFcb = 0x00
 
-    @property
-    def _nextSendFcb(self):
+    @staticmethod
+    def nextSendFcb():
         nextSendFcb = KnxBaosFT12Frame._lastSendFcb
         KnxBaosFT12Frame._lastSendFcb ^= KnxBaosFT12Frame.FCB_MASK
         return nextSendFcb
 
-    @property
-    def _nextRecvFcb(self):
+    @staticmethod
+    def nextRecvFcb():
         nextRecvFcb = KnxBaosFT12Frame._lastRecvFcb
         KnxBaosFT12Frame._lastRecvFcb ^= KnxBaosFT12Frame.FCB_MASK
         return nextRecvFcb

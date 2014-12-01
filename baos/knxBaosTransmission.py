@@ -43,14 +43,12 @@ class KnxBaosTransmission:
 
         raise TransmissionError:
         """
-        super(Transmission, self).__init__()
-
         self._payload = payload
         self._waitConfirm = waitConfirm
         self._result = KnxBaosTransmission.OK
 
-    #def __repr__(self):
-        #return "<Transmission(payload=%s, waitConfirm=%s, result=%d)>" % (repr(self._payload), self._waitConfirm, self._result)
+    def __repr__(self):
+        return "<Transmission(payload={}, waitConfirm={}, result={})>".format(repr(self._payload), self._waitConfirm, self._result)
 
     @property
     def payload(self):

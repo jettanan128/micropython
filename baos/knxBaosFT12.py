@@ -44,6 +44,8 @@ class KnxBaosFT12:
             if self._uart.any():
                 ack = self._uart.readchar()
                 self._logger.debug("_sendFrame(): received ack={}".format(hex(ack)))
+                if ack != KnxBaosFT12.ACK:
+                    self._logger.error("wrong ack char ({})".format(hex(ack)))
                 break
             else:
                 pyb.delay(1)
@@ -53,12 +55,15 @@ class KnxBaosFT12:
     @asyncio.coroutine
     def _transmitterLoop(self):
         """ Poll message from tlsap and send telegram to uart
+
+        @todo: limit transmission frequency
         """
         while True:
             try:
                 transmission = self._tlsap.getOutMessage()
 
                 if transmission is not None:
+                    self._logger.debug("_transmitterLoop(): transmission={}".format(transmission))
                     message = transmission.payload
                     frame = KnxBaosFT12Frame.createMessageFrame(message)
 
@@ -68,15 +73,13 @@ class KnxBaosFT12:
                     except TimeoutError as e:
                         self._logger.debug("_transmitterLoop(): {}".format(e))
                         transmission.result = KnxBaosTransmission.NO_ACK
-                    except as e:
+                    except Exception as e:
                         transmission.result = KnxBaosTransmission.ERROR
                         #self._logger.debug("_transmitterLoop(): {}".format(e))
                         raise
 
                     if transmission.waitConfirm:
                         transmission.waitConfirm = False
-
-                    self._logger.debu("_transmitterLoop(): transmission={}".format(transmission))
 
                 yield from asyncio.sleep(10)
 
@@ -94,13 +97,13 @@ class KnxBaosFT12:
                 # If data available, read complete telegram
                 if self._uart.any():
                     telegram = []
-                    while self._uart.any():
+                    while not telegram or telegram[-1] != KnxBaosFT12Frame.END_CHAR:
                         c = self._uart.readchar()
-                        telegram.append(c)
-                        if telegram[-1] == KnxBaosFT12Frame.END_CHAR:
+                        if c == -1:
                             break
-                        pyb.delay(1)
-                        #@todo: use timeout_char?
+                        telegram.append(c)
+                        #pyb.delay(5)
+                        #@todo: adjust timeout and timeout_char
 
                     # Send ACK
                     self._uart.writechar(KnxBaosFT12.ACK)
@@ -115,6 +118,8 @@ class KnxBaosFT12:
                             if frame.controlByte == KnxBaosFT12FixFrame.RESET_IND:
                                 self._logger.info("received Reset.Ind")
                                 KnxBaosFT12Frame.resetFcb()
+                                # @todo: find a way to inform application
+                                self._tlsap._handler._onResetInd()  # hugly!
 
                             elif frame.controlByte == KnxBaosFT12FixFrame.STATUS_RES:
                                 self._logger.info("received Status.Res")
@@ -123,14 +128,14 @@ class KnxBaosFT12:
                                 self._logger.debug("_receiverLoop(): received {} control byte".format(hex(frame.controlByte)))
 
                         elif isinstance(frame, KnxBaosFT12VarFrame):
-                            self._tlsap.putInMessage(frame.message)  # @todo: switch to transmission
+                            self._tlsap.putInMessage(frame.message)
 
                         else:
                             self._logger.critical("unknown frame class ({})".format(repr(frame)))
 
                     except FT12FrameError:
                         self._logger.error("_receiverLoop(): invalid frame")
-                        raise
+                        #raise
 
                 yield from asyncio.sleep(10)
 
@@ -148,5 +153,8 @@ class KnxBaosFT12:
         """ Reset KnxBaos device
         """
         frame = KnxBaosFT12Frame.createResetFrame()
-        self._sendFrame(frame.payload)
-        KnxBaosFT12Frame.resetFcb()
+        try:
+            self._sendFrame(frame.payload)
+            KnxBaosFT12Frame.resetFcb()
+        except TimeoutError as e:
+            self._logger.debug("resetDevice(): {}".format(e))

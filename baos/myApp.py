@@ -62,7 +62,14 @@ class MyApp(KnxBaosApp):
             # do something usefull, like check buttons, dim light...
             if self._switch() and not prevSwitch:
                 self._logger.info("loop(): switch pressed")
-                self.baos.getServerItemReq(1, 1)
+                #yield from self.baos.getServerItemReq(1, 16)
+                #yield from asyncio.sleep(1000)
+                #yield from self.baos.getDatapointDescription2Req(1, 3)
+                #yield from self.baos.getDescriptionStringReq(1, 3)  # service no implemented!!!
+                yield from self.baos.setDatapointValueReq(1, int('0b0011'), (1,))
+                #yield from asyncio.sleep(1000)
+                #yield from self.baos.getDatapointValueReq(1, 1)
+                #self.baos.reset()
             prevSwitch = self._switch()
 
             # Let some time to the KnxBaosApp to run

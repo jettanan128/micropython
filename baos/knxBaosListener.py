@@ -6,6 +6,19 @@ import logging
 class KnxBaosListener:
     """
     """
+    ERRORS = ("No error (this function gets never called with that)",
+              "Internal error",
+              "No Item found",
+              "Buffer is too small",
+              "Item is not writable",
+              "Service is not supported",
+              "Bad service parameter",
+              "Wrong Datapoint ID",
+              "Bad Datapoint command",
+              "Bad length of the Datapoint value",
+              "Message inconsistent"
+              )
+
     def __init__(self):
         """
         """
@@ -16,10 +29,12 @@ class KnxBaosListener:
         """ Handle reset indication
 
         What difference with Reset.Ind as fix frame length (0x10 0xc0 0xc0 0x16)?
+        For now, handles both
 
-        BAOS has been reset (could be due to a change of the parameters via ETS).
+        BAOS has been reset (could be due to a change of the parameters via ETS); some stuff
+        has to be done by the application (checking for changed parameters, for example)
         """
-        pass
+        self._logger.debug("handleResetInd()")
         #App_RetrieveParameterBytes()  # request parameter bytes
         #  ->  KnxBaos_GetParameterByte(PB_FIRST, PB_MAX - 1)
 
@@ -45,22 +60,25 @@ class KnxBaosListener:
         """
         self._logger.debug("handleSetServerItemRes(): startItem={}".format(startItem))
 
-    def handleGetDatapointDescriptionRes(self, dpId, dpValueLength, dpConfigFlags):
-        """Handle the GetDatapointDescription.Res data
+    #def handleGetDatapointDescriptionRes(self, dpId, dpValueLength, dpType, dpConfigFlags):
+        #"""Handle the GetDatapointDescription.Res data
 
-        A BAOS message can hold more than one data. This functions is called
-        for every single value (Datapoint) in a message array.
+        #A BAOS message can hold more than one data. This functions is called
+        #for every single value (Datapoint) in a message array.
 
-        @param dpId: current Datapoint ID from message
-        @type dpId: int
+        #@param dpId: current Datapoint ID from message
+        #@type dpId: int
 
-        @param dpValueLength: length of current Datapoint from message
-        @type dpValueLength: int
+        #@param dpValueLength: length of current Datapoint from message
+        #@type dpValueLength: int
 
-        @param dpConfigFlags: configuration flags of current Datapoint from message
-        @type dpConfigFlags: int (or DPConfigFlag object?)
-        """
-        self._logger.debug("handleGetDatapointDescriptionRes(): dpId={}, dpValueLength={}, dpConfigFlags={}".format(dpId, dpValueLength, dpConfigFlags))
+        #@param dpConfigFlags: configuration flags of current Datapoint from message
+        #@type dpConfigFlags: int (or DPConfigFlag object?)
+
+        #@param dpType: type of Datapoint
+        #@type dpType: int
+        #"""
+        #self._logger.debug("handleGetDatapointDescriptionRes(): dpId={}, dpValueLength={}, dpConfigFlags={}, dpType={}".format(dpId, dpValueLength, dpConfigFlags, dpType))
 
     def handleGetDescriptionStringRes(self, dpId, dpDescriptionStr):
         """Handle the GetDescriptionString.Res data
@@ -86,7 +104,7 @@ class KnxBaosListener:
         @type dpId: int
 
         @param dpState: state of current Datapoint from message
-        @type dpState: int (or State object?)
+        @type dpState: int
 
         @param dpData: data of current Datapointfrom message
         @type dpData: bytearray
@@ -132,7 +150,7 @@ class KnxBaosListener:
         """
         self._logger.debug("handleGetParameterByteRes(): byteNum={}, byteData={}".format(byteNum, byteData))
 
-    def handleGetDatapointDescription2Res(self, dpId, dpValueLength, dpConfigFlags):
+    def handleGetDatapointDescription2Res(self, dpId, dpValueLength, dpConfigFlags, dpType):
         """Handle the GetDatapointDescription2.Res data
 
         A BAOS message can hold more than one data. This functions is called
@@ -146,8 +164,11 @@ class KnxBaosListener:
 
         @param dpConfigFlags: configuration flags of current Datapoint from message
         @type dpConfigFlags: int (or DPConfigFlag object?)
+
+        @param dpType: type of Datapoint
+        @type dpType: int
         """
-        self._logger.debug("handleGetDatapointDescription2Res(): dpId={}, dpValueLength={}, dpConfigFlags={}".format(dpId, dpValueLength, dpConfigFlags))
+        self._logger.debug("handleGetDatapointDescription2Res(): dpId={}, dpValueLength={}, dpConfigFlags={}, dpType={}".format(dpId, dpValueLength, dpConfigFlags, dpType))
 
     def handleError(self, errorCode):
         """ Handle error code
@@ -167,4 +188,4 @@ class KnxBaosListener:
         @param errorCode: KNX BAOS ObjectServer error code
         @type errorCode: int
         """
-        self._logger.debug("handleError(): errorCode={}".format(errorCode))
+        self._logger.debug("handleError(): {} ({})".format(KnxBaosListener.ERRORS[errorCode], errorCode))
