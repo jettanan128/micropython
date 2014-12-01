@@ -25,10 +25,16 @@ class KnxBaosHandler:
     GET_PARAM_BYTE_RES = 0x87  # GetParameterByte.Res
     GET_DP_DESCR2_RES = 0x88  # GetDatapointDescription2.Res
 
+    #MESSAGE_POS_START = 2  # start data position
+    #MESSAGE_POS_NR = 3  # number of data positions
+    #MESSAGE_POS_ERROR = 4  # error code position
+    #MESSAGE_POS_ARRAY = 4  # data array position
+    #MESSAGE_MIN_LEN = 5  # minimum length of message
+
     # GetServerItem.Res part
     GET_SRV_ITEM_POS_START = 2  # start Item position
     GET_SRV_ITEM_POS_NR = 3  # number of items position
-    GET_SRV_ITEM_POS_ERROR = 4  # error ode position
+    GET_SRV_ITEM_POS_ERROR = 4  # error code position
     GET_SRV_ITEM_POS_ARRAY = 4  # Item array position
     GET_SRV_ITEM_MIN_LEN = 5  # minimum length of message
 

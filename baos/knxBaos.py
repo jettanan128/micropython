@@ -38,22 +38,22 @@ class KnxBaos:
     GET_PARAM_BYTE_REQ = 0x07  # GetParameterByte.Req
     GET_DP_DESCR2_REQ = 0x08  # GetDatapointDescription2.Req
 
-    ## Defines for commands used by data point services
-    #DP_CMD_NONE = 0x00  # do nothing
-    #DP_CMD_SET_VAL = 0x01  # change value in data point
-    #DP_CMD_SEND_VAL = 0x02  # send the current value on the bus
-    #DP_CMD_SET_SEND_VAL = 0x03  # change value and send it on the bus
-    #DP_CMD_SEND_READ_VAL = 0x04  # send a value read to the bus
-    #DP_CMD_CLEAR_STATE = 0x05  # clear the state of a data point
+    # Defines for commands used by data point services
+    DP_CMD_NONE = 0x00  # do nothing
+    DP_CMD_SET_VAL = 0x01  # change value in data point
+    DP_CMD_SEND_VAL = 0x02  # send the current value on the bus
+    DP_CMD_SET_SEND_VAL = 0x03  # change value and send it on the bus
+    DP_CMD_SEND_READ_VAL = 0x04  # send a value read to the bus
+    DP_CMD_CLEAR_STATE = 0x05  # clear the state of a data point
 
-    ## Defines for DatapointDescription configuration flags
-    #DP_DES_FLAG_PRIO = 0x03  # transmit priority
-    #DP_DES_FLAG_COM = 0x04  # Datapoint communication enabled
-    #DP_DES_FLAG_READ = 0x08  # read from bus enabled
-    #DP_DES_FLAG_WRITE = 0x10  # write from bus enabled
-    #DP_DES_FLAG_reserved = 0x20  # reserved
-    #DP_DES_FLAG_CTR = 0x40  # clients transmit request processed
-    #DP_DES_FLAG_UOR = 0x80  # update on response enabled
+    # Defines for DatapointDescription configuration flags
+    DP_DES_FLAG_PRIO_MASK = 0x03  # transmit priority mask
+    DP_DES_FLAG_COM = 0x04  # Datapoint communication enabled
+    DP_DES_FLAG_READ = 0x08  # read from bus enabled
+    DP_DES_FLAG_WRITE = 0x10  # write from bus enabled
+    DP_DES_FLAG_reserved = 0x20  # reserved
+    DP_DES_FLAG_CTR = 0x40  # clients transmit request processed
+    DP_DES_FLAG_UOR = 0x80  # update on response enabled
 
     # Item ID's used in Get/SetDeviceItem services
     ID_NONE = 0
@@ -73,11 +73,11 @@ class KnxBaos:
     ID_BUFFER_SIZE = 14
     ID_PROG_MODE = 15
 
-    ## Objects server baud rates
-    #OBJSRV_BAUD_UNKNOWN = 0x00
-    #OBJSRV_BAUD_19K2 = 0x01
-    #OBJSRV_BAUD_115K2 = 0x02
-    #OBJSRV_BAUD_NEW = 0x80
+    # Objects server baud rates
+    OBJSRV_BAUD_UNKNOWN = 0x00
+    OBJSRV_BAUD_19K2 = 0x01
+    OBJSRV_BAUD_115K2 = 0x02
+    OBJSRV_BAUD_NEW = 0x80
 
     def __init__(self, listener):
         """
@@ -237,8 +237,16 @@ class KnxBaos:
 
         return result
 
+    @asyncio.coroutine
+    def getParameterByteReq(self, startByte, numberOfBytes):
+        """
+        """
+        self._logger.debug("getParameterByteReq(): startByte={}, numberOfBytes={}".format(startByte, numberOfBytes))
 
+        message = (KnxBaos.MAIN_SRV, KnxBaos.GET_PARAM_BYTE_REQ, startByte, numberOfBytes)
+        result = yield from self._sendReq(message)
 
+        return result
 
     @asyncio.coroutine
     def getDatapointDescription2Req(self, startDatapoint, numberOfDatapoint):

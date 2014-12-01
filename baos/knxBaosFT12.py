@@ -116,7 +116,7 @@ class KnxBaosFT12:
                             if frame.controlByte == KnxBaosFT12FixFrame.RESET_IND:
                                 self._logger.info("_receiverLoop(): received Reset.Ind")
                                 KnxBaosFT12Frame.resetFcb()
-                                # @todo: find a way to inform application
+                                # @todo: find a way to inform application -> send both header and message to _tlsap
                                 self._tlsap._handler._onResetInd()  # hugly!
 
                             elif frame.controlByte == KnxBaosFT12FixFrame.STATUS_RES:

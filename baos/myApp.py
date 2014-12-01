@@ -7,6 +7,7 @@ import pyb
 
 import uasyncio.core as asyncio
 
+from knxBaos import DP_CMD_SET_SEND_VAL
 from knxBaosApp import KnxBaosApp
 
 # Data point assignment
@@ -66,7 +67,7 @@ class MyApp(KnxBaosApp):
                 #yield from asyncio.sleep(1000)
                 #yield from self.baos.getDatapointDescription2Req(1, 3)
                 #yield from self.baos.getDescriptionStringReq(1, 3)  # service no implemented!!!
-                yield from self.baos.setDatapointValueReq(1, int('0b0011'), (1,))
+                yield from self.baos.setDatapointValueReq(1, DP_CMD_SET_SEND_VAL, (1,))
                 #yield from asyncio.sleep(1000)
                 #yield from self.baos.getDatapointValueReq(1, 1)
                 #self.baos.reset()
@@ -75,30 +76,30 @@ class MyApp(KnxBaosApp):
             # Let some time to the KnxBaosApp to run
             yield from asyncio.sleep(100)
 
-    #def handleGetDatapointValueRes(self, dpId, dpState, dpData):
-        #self.handleDatapointValueInd(self, dpId, dpState, dpData)
+    def handleGetDatapointValueRes(self, dpId, dpState, dpData):
+        self.handleDatapointValueInd(self, dpId, dpState, dpData)
 
-    #def handleDatapointValueInd(self, dpId, dpState, dpData):
-        #if dpId == DP_LED0_SWITCH_I:
-            #if dpData == SWITCH_ON:
-                #self._dimSwitch(True)
-            #elif dpData == SWITCH_OFF:
-                #self._dimSwitch(False)
+    def handleDatapointValueInd(self, dpId, dpState, dpData):
+        if dpId == DP_LED0_SWITCH_I:
+            if dpData == SWITCH_ON:
+                self._dimSwitch(True)
+            elif dpData == SWITCH_OFF:
+                self._dimSwitch(False)
 
-        #elif dpId == DP_LED0_DIM_RELATIVE_I:
-            #self._dimRelative(dpData)
+        elif dpId == DP_LED0_DIM_RELATIVE_I:
+            self._dimRelative(dpData)
 
-        #elif dpId == DP_LED0_DIM_ABSOLUTE_I:
-            #self._dimAbsolute(dpData*255/100)
+        elif dpId == DP_LED0_DIM_ABSOLUTE_I:
+            self._dimAbsolute(dpData*255/100)
 
-        ##@todo: check dpData length for each command
+        #@todo: check dpData length for each command
 
-    #def handleGetParameterByteRes(self, byteNum, byteData):
-        #if byteNum == PB_SWITCH_TYPE:
-            #self._switchType = byteData
+    def handleGetParameterByteRes(self, byteNum, byteData):
+        if byteNum == PB_SWITCH_TYPE:
+            self._switchType = byteData
 
-        #elif byteNum == PB_LIGHT_TYPE:
-            #self._lightType = byteData
+        elif byteNum == PB_LIGHT_TYPE:
+            self._lightType = byteData
 
 
 myApp = MyApp()
