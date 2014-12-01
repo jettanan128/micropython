@@ -8,22 +8,22 @@ class KnxBaosHandler:
     """
     # Defines for object server protocol
     # DUPLICATED FROM knxBAOS!!!!
-    BAOS_MAIN_SRV = 0xf0  # main service code for all BAOS services
-    BAOS_RESET_SRV = 0xa0  # reset/reboot service code
+    MAIN_SRV = 0xf0  # main service code for all BAOS services
+    RESET_SRV = 0xa0  # reset/reboot service code
 
     # Byte position in Object Server Protocol
     POS_MAIN_SERV = 0  # main service code
     POS_SUB_SERV = 1  # sub service code
 
-    BAOS_GET_SRV_ITEM_RES = 0x81  # GetServerItem.Res
-    BAOS_SET_SRV_ITEM_RES = 0x82  # SetServerItem.Res
-    #BAOS_GET_DP_DESCR_RES = 0x83  # GetDatapointDescription.Res
-    BAOS_GET_DESCR_STR_RES = 0x84  # GetDescriptionString.Res
-    BAOS_GET_DP_VALUE_RES = 0x85  # GetDatapointValue.Res
-    BAOS_DP_VALUE_IND = 0xc1  # DatapointValue.Ind
-    BAOS_SET_DP_VALUE_RES = 0x86  # SetDatapointValue.Res
-    BAOS_GET_PARAM_BYTE_RES = 0x87  # GetParameterByte.Res
-    BAOS_GET_DP_DESCR2_RES = 0x88  # GetDatapointDescription2.Res
+    GET_SRV_ITEM_RES = 0x81  # GetServerItem.Res
+    SET_SRV_ITEM_RES = 0x82  # SetServerItem.Res
+    #GET_DP_DESCR_RES = 0x83  # GetDatapointDescription.Res
+    GET_DESCR_STR_RES = 0x84  # GetDescriptionString.Res
+    GET_DP_VALUE_RES = 0x85  # GetDatapointValue.Res
+    DP_VALUE_IND = 0xc1  # DatapointValue.Ind
+    SET_DP_VALUE_RES = 0x86  # SetDatapointValue.Res
+    GET_PARAM_BYTE_RES = 0x87  # GetParameterByte.Res
+    GET_DP_DESCR2_RES = 0x88  # GetDatapointDescription2.Res
 
     # GetServerItem.Res part
     GET_SRV_ITEM_POS_START = 2  # start Item position
@@ -92,36 +92,36 @@ class KnxBaosHandler:
         """
 
         # Check for reset indication
-        if message[KnxBaosHandler.POS_MAIN_SERV] == KnxBaosHandler.BAOS_RESET_SRV:
+        if message[KnxBaosHandler.POS_MAIN_SERV] == KnxBaosHandler.RESET_SRV:
             self._listener.handleResetInd()
 
-        elif message[KnxBaosHandler.POS_MAIN_SERV] == KnxBaosHandler.BAOS_MAIN_SRV:
+        elif message[KnxBaosHandler.POS_MAIN_SERV] == KnxBaosHandler.MAIN_SRV:
 
-            if message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_GET_SRV_ITEM_RES:
+            if message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.GET_SRV_ITEM_RES:
                 self._onGetServerItemRes(message)
 
-            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_SET_SRV_ITEM_RES:
+            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.SET_SRV_ITEM_RES:
                 self._onSetServerItemRes(message)
 
-            #elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_GET_DP_DESCR_RES:
+            #elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.GET_DP_DESCR_RES:
                 #self._onGetDatapointDescriptionRes(message)
 
-            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_GET_DESCR_STR_RES:
+            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.GET_DESCR_STR_RES:
                 self._onGetDescriptionStringRes(message)
 
-            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_GET_DP_VALUE_RES:
+            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.GET_DP_VALUE_RES:
                 self._onGetDatapointValueRes(message)
 
-            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_DP_VALUE_IND:
+            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.DP_VALUE_IND:
                 self._onDatapointValueInd(message)
 
-            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_SET_DP_VALUE_RES:
+            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.SET_DP_VALUE_RES:
                 self._onSetDatapointValueRes(message)
 
-            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_GET_PARAM_BYTE_RES:
+            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.GET_PARAM_BYTE_RES:
                 self._onGetParameterByteRes(message)
 
-            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.BAOS_GET_DP_DESCR2_RES:
+            elif message[KnxBaosHandler.POS_SUB_SERV] == KnxBaosHandler.GET_DP_DESCR2_RES:
                 self._onGetDatapointDescription2Res(message)
 
             else:

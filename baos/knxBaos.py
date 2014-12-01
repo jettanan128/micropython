@@ -22,21 +22,21 @@ class KnxBaos:
     #EMI2_L_RESET_IND = 0xa0
 
     # Defines for object server protocol
-    BAOS_MAIN_SRV = 0xf0  # main service code for all BAOS services
+    MAIN_SRV = 0xf0  # main service code for all BAOS services
 
-    #BAOS_SUB_TYPE_MASK = 0xc0  # mask for sub service type
-    #BAOS_SUB_TYPE_REQ = 0x00  # sub service type request
-    #BAOS_SUB_TYPE_RES = 0x80  # sub service type response
-    #BAOS_SUB_TYPE_IND = 0xc0  # sub service type indication
+    #SUB_TYPE_MASK = 0xc0  # mask for sub service type
+    #SUB_TYPE_REQ = 0x00  # sub service type request
+    #SUB_TYPE_RES = 0x80  # sub service type response
+    #SUB_TYPE_IND = 0xc0  # sub service type indication
 
-    BAOS_GET_SRV_ITEM_REQ = 0x01  # GetServerItem.Req
-    BAOS_SET_SRV_ITEM_REQ = 0x02  # SetServerItem.Req
-    #BAOS_GET_DP_DESCR_REQ = 0x03  # GetDatapointDescription.Req
-    BAOS_GET_DESCR_STR_REQ = 0x04  # GetDescriptionString.Req
-    BAOS_GET_DP_VALUE_REQ = 0x05  # GetDatapointValue.Req
-    BAOS_SET_DP_VALUE_REQ = 0x06  # SetDatapointValue.Req
-    BAOS_GET_PARAM_BYTE_REQ = 0x07  # GetParameterByte.Req
-    BAOS_GET_DP_DESCR2_REQ = 0x08  # GetDatapointDescription2.Req
+    GET_SRV_ITEM_REQ = 0x01  # GetServerItem.Req
+    SET_SRV_ITEM_REQ = 0x02  # SetServerItem.Req
+    #GET_DP_DESCR_REQ = 0x03  # GetDatapointDescription.Req  # replaced by GET_DP_DESCR2_REQ
+    GET_DESCR_STR_REQ = 0x04  # GetDescriptionString.Req
+    GET_DP_VALUE_REQ = 0x05  # GetDatapointValue.Req
+    SET_DP_VALUE_REQ = 0x06  # SetDatapointValue.Req
+    GET_PARAM_BYTE_REQ = 0x07  # GetParameterByte.Req
+    GET_DP_DESCR2_REQ = 0x08  # GetDatapointDescription2.Req
 
     ## Defines for commands used by data point services
     #DP_CMD_NONE = 0x00  # do nothing
@@ -165,7 +165,7 @@ class KnxBaos:
         """
         self._logger.debug("getServerItemReq(): startItem={}, numberOfItems={}".format(startItem, numberOfItems))
 
-        message = (KnxBaos.BAOS_MAIN_SRV, KnxBaos.BAOS_GET_SRV_ITEM_REQ, startItem, numberOfItems)
+        message = (KnxBaos.MAIN_SRV, KnxBaos.GET_SRV_ITEM_REQ, startItem, numberOfItems)
         result = yield from self._sendReq(message)
 
         return result
@@ -179,7 +179,7 @@ class KnxBaos:
         """
         self._logger.debug("setServerItemReq(): itemId={}, itemData={}, args={}".format(itemId, itemData, repr(args)))
 
-        message = (KnxBaos.BAOS_MAIN_SRV, KnxBaos.BAOS_SET_SRV_ITEM_REQ, itemId, len(itemData)) + itemData
+        message = (KnxBaos.MAIN_SRV, KnxBaos.SET_SRV_ITEM_REQ, itemId, len(itemData)) + itemData
 
         result = yield from self._sendReq(message)
 
@@ -191,7 +191,7 @@ class KnxBaos:
         #"""
         #self._logger.debug("getDatapointDescriptionReq(): startDatapoint={}, numberOfDatapoint={}".format(startDatapoint, numberOfDatapoint))
 
-        #message = (KnxBaos.BAOS_MAIN_SRV, KnxBaos.BAOS_GET_DP_DESCR_REQ, startDatapoint, numberOfDatapoint)
+        #message = (KnxBaos.MAIN_SRV, KnxBaos.GET_DP_DESCR_REQ, startDatapoint, numberOfDatapoint)
         #result = yield from self._sendReq(message)
 
         #return result
@@ -202,7 +202,7 @@ class KnxBaos:
         """
         self._logger.debug("getDescriptionStringReq(): startString={}, numberOfStrings={}".format(startString, numberOfStrings))
 
-        message = (KnxBaos.BAOS_MAIN_SRV, KnxBaos.BAOS_GET_DESCR_STR_REQ, startString, numberOfStrings)
+        message = (KnxBaos.MAIN_SRV, KnxBaos.GET_DESCR_STR_REQ, startString, numberOfStrings)
         result = yield from self._sendReq(message)
 
         return result
@@ -213,7 +213,7 @@ class KnxBaos:
         """
         self._logger.debug("getDatapointValueReq(): startDatapoint={}, numberOfDatapoint={}".format(startDatapoint, numberOfDatapoint))
 
-        message = (KnxBaos.BAOS_MAIN_SRV, KnxBaos.BAOS_GET_DP_VALUE_REQ, startDatapoint, numberOfDatapoint)
+        message = (KnxBaos.MAIN_SRV, KnxBaos.GET_DP_VALUE_REQ, startDatapoint, numberOfDatapoint)
         result = yield from self._sendReq(message)
 
         return result
@@ -230,7 +230,7 @@ class KnxBaos:
         self._logger.debug("setDatapointValueReq(): dpId={}, dpCmd={}, dpData={}".format(dpId, dpCmd, repr(dpData)))
 
         cmdLength = dpCmd << 4 | len(dpData) & 0x0f
-        message = (KnxBaos.BAOS_MAIN_SRV, KnxBaos.BAOS_SET_DP_VALUE_REQ, dpId, cmdLength) + dpData
+        message = (KnxBaos.MAIN_SRV, KnxBaos.SET_DP_VALUE_REQ, dpId, cmdLength) + dpData
 
         result = yield from self._sendReq(message)
 
@@ -245,7 +245,7 @@ class KnxBaos:
         """
         self._logger.debug("getDatapointDescription2Req(): startDatapoint={}, numberOfDatapoint={}".format(startDatapoint, numberOfDatapoint))
 
-        message = (KnxBaos.BAOS_MAIN_SRV, KnxBaos.BAOS_GET_DP_DESCR2_REQ, startDatapoint, numberOfDatapoint)
+        message = (KnxBaos.MAIN_SRV, KnxBaos.GET_DP_DESCR2_REQ, startDatapoint, numberOfDatapoint)
         result = yield from self._sendReq(message)
 
         return result
