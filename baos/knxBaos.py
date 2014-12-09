@@ -231,7 +231,7 @@ class KnxBaos:
         self._logger.debug("setDatapointValueReq(): dpId={}, dpCmd={}, dpData={}".format(dpId, dpCmd, repr(dpData)))
 
         cmdLength = dpCmd << 4 | len(dpData) & 0x0f
-        message = (KnxBaos.MAIN_SRV, KnxBaos.SET_DP_VALUE_REQ, dpId, cmdLength) + dpData
+        message = (KnxBaos.MAIN_SRV, KnxBaos.SET_DP_VALUE_REQ, dpId, 1, dpId, cmdLength) + dpData
 
         result = yield from self._sendReq(message)
 
