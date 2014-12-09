@@ -417,7 +417,7 @@ class KnxBaosHandler:
 
         startByte = message[KnxBaosHandler.GET_PAR_BYTE_POS_START]
         numberOfBytes = message[KnxBaosHandler.GET_PAR_BYTE_POS_NR]
-        self._logger.debug("_onGetParameterByteRes(): startDatapoint={}".format(startDatapoint))
+        self._logger.debug("_onGetParameterByteRes(): startByte={}, numberOfBytes={}".format(startByte, numberOfBytes))
 
         if numberOfBytes == 0:
             errorCode = message[KnxBaosHandler.GET_PAR_BYTE_POS_ERROR]
