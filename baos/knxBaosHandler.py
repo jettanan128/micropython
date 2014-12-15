@@ -144,7 +144,10 @@ class KnxBaosHandler:
         self._logger.debug("_onResetInd()")
 
         # Call listener handler
-        self._listener.handleResetInd()
+        try:
+            self._listener.handleResetInd()
+        except Exception as e:
+            self._logger.error("_onResetInd(): call to listener failed with exception '{}'".format(str(e)))
 
     def _onGetServerItemRes(self, message):
         """ Handle the GetServerItem.Res message
@@ -181,7 +184,10 @@ class KnxBaosHandler:
             itemData = message[index+2:index+2+itemDataLength]
 
             # Call listener handler
-            self._listener.handleGetServerItemRes(itemId, itemData)
+            try:
+                self._listener.handleGetServerItemRes(itemId, itemData)
+            except Exception as e:
+                self._logger.error("_onGetServerItemRes(): call to listener failed with exception '{}'".format(str(e)))
 
             # Set index to next Item
             index += 2 + itemDataLength
@@ -212,7 +218,10 @@ class KnxBaosHandler:
             return
 
         # Call listener handler
-        self._listener.handleSetServerItemRes(startItem)
+        try:
+            self._listener.handleSetServerItemRes(startItem)
+        except Exception as e:
+            self._logger.error("_onSetServerItemRes(): call to listener failed with exception '{}'".format(str(e)))
 
     #def _onGetDatapointDescriptionRes(self, message):
         #""" Handle the GetDatapointDescription.Res message
@@ -250,7 +259,10 @@ class KnxBaosHandler:
             #dpType = message[index+2]
 
             ## Call listener handler
-            #self._listener.handleGetDatapointDescriptionRes(dpId, dpValueLength, dpConfigFlags, dpType)
+            #try:
+                #self._listener.handleGetDatapointDescriptionRes(dpId, dpValueLength, dpConfigFlags, dpType)
+            #except Exception as e:
+                #self._logger.error("_onGetDatapointDescriptionRes(): call to listener failed with exception '{}'".format(str(e)))
 
             ## Set index to next Datapoint
             #index += 3
@@ -289,7 +301,11 @@ class KnxBaosHandler:
             dpDescriptionStr = message[index:index+endStr]
 
             # Call listener handler
-            self._listener.handleGetDescriptionStringRes(dpId, dpDescriptionStr)
+            try:
+                self._listener.handleGetDescriptionStringRes(dpId, dpDescriptionStr)
+            except Exception as e:
+                self._logger.error("_onGetDescriptionStringRes(): call to listener failed with exception '{}'".format(str(e)))
+
 
             # Set index to next String
             index += len(dpDescriptionStr) + 1
@@ -330,7 +346,10 @@ class KnxBaosHandler:
             dpData = message[index+2:index+2+dpLength]
 
             # Call listener handler
-            self._listener.handleGetDatapointValueRes(dpId, dpState, dpData)
+            try:
+                self._listener.handleGetDatapointValueRes(dpId, dpState, dpData)
+            except Exception as e:
+                self._logger.error("_onGetDatapointValueRes(): call to listener failed with exception '{}'".format(str(e)))
 
             # Set index to next Datapoint
             index += 2 + dpLength
@@ -343,6 +362,8 @@ class KnxBaosHandler:
 
         @param message: KNX BAOS ObjectServer message
         @type message: byte array
+
+        @todo: notify only if DP changed from last call.
         """
 
         # Check the length of message
@@ -366,7 +387,10 @@ class KnxBaosHandler:
             dpData = message[index+2:index+2+dpLength]
 
             # Call listener handler
-            self._listener.handleDatapointValueInd(dpId, dpState, dpData)
+            try:
+                self._listener.handleDatapointValueInd(dpId, dpState, dpData)
+            except Exception as e:
+                self._logger.error("_onDatapointValueInd(): call to listener failed with exception '{}'".format(str(e)))
 
             # Set index to next Datapoint
             index += 2 + dpLength
@@ -397,7 +421,10 @@ class KnxBaosHandler:
             return
 
         # Call listener handler
-        self._listener.handleSetDatapointValueRes(startDatapoint)
+        try:
+            self._listener.handleSetDatapointValueRes(startDatapoint)
+        except Exception as e:
+            self._logger.error("_onSetDatapointValueRes(): call to listener failed with exception '{}'".format(str(e)))
 
     def _onGetParameterByteRes(self, message):
         """ Handle the GetParameterByte.Res message
@@ -431,7 +458,10 @@ class KnxBaosHandler:
             byteData = message[index+i]
 
             # Call listener handler
-            self._listener.handleGetParameterByteRes(startByte+i, byteData)
+            try:
+                self._listener.handleGetParameterByteRes(startByte+i, byteData)
+            except Exception as e:
+                self._logger.error("_onGetParameterByteRes(): call to listener failed with exception '{}'".format(str(e)))
 
     def _onGetDatapointDescription2Res(self, message):
         """ Handle the GetDatapointDescription2.Res message
@@ -469,7 +499,10 @@ class KnxBaosHandler:
             dpType = message[index+2]
 
             # Call listener handler
-            self._listener.handleGetDatapointDescription2Res(dpId, dpValueLength, dpConfigFlags, dpType)
+            try:
+                self._listener.handleGetDatapointDescription2Res(dpId, dpValueLength, dpConfigFlags, dpType)
+            except Exception as e:
+                self._logger.error("_onGetDatapointDescription2Res(): call to listener failed with exception '{}'".format(str(e)))
 
             # Set index to next Datapoint
             index += 3
