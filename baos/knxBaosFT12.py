@@ -19,7 +19,7 @@ class KnxBaosFT12:
     ACK = 0xe5  # acknowledge byte for FT1.2 protocol
     ACK_TIMEOUT = 30  # in ms
 
-    def __init__(self, tlsap, uartNum=2):
+    def __init__(self, tlsap, uartNum=3):
         """
         """
         self._tlsap = tlsap  # find a better name
