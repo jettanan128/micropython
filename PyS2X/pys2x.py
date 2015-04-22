@@ -2,7 +2,7 @@
 
 """ PS2 gamepad python support for Micropython (pyboard)
 
- - PyS2x http://www.github.com/fma38/micropython/PyS2X is Copyright:
+ - PyS2X http://www.github.com/fma38/micropython/PyS2X is Copyright:
   - (C) 2015 Frederic Mantegazza
   - (C) 2011-1013 Bill Porter
 
@@ -23,7 +23,7 @@ or see:
 
     http://www.gnu.org/licenses/gpl.html
 
-See https:# github.com/madsci1016/Arduino-PyS2x for original Arduino code
+See https:# github.com/madsci1016/Arduino-PS2X for original Arduino code
 """
 
 import pyb
