@@ -34,26 +34,26 @@ CTRL_BYTE_DELAY = 0  # does not seem necessary, at least on a real Sony DualShoc
 MAX_DELAY = 1500
 
 # Button constants
-BUTTON_SELECT      = 0x0001
-BUTTON_L3          = 0x0002
-BUTTON_R3          = 0x0004
-BUTTON_START       = 0x0008
-BUTTON_PAD_UP      = 0x0010
-BUTTON_PAD_RIGHT   = 0x0020
-BUTTON_PAD_DOWN    = 0x0040
-BUTTON_PAD_LEFT    = 0x0080
-BUTTON_L2          = 0x0100
-BUTTON_R2          = 0x0200
-BUTTON_L1          = 0x0400
-BUTTON_R1          = 0x0800
-BUTTON_GREEN       = 0x1000
-BUTTON_TRIANGLE    = 0x1000
-BUTTON_RED         = 0x2000
-BUTTON_CIRCLE      = 0x2000
-BUTTON_BLUE        = 0x4000
-BUTTON_CROSS       = 0x4000
-BUTTON_PINK        = 0x8000
-BUTTON_SQUARE      = 0x8000
+BUTTON_SELECT      = 0
+BUTTON_L3          = 1
+BUTTON_R3          = 2
+BUTTON_START       = 3
+BUTTON_PAD_UP      = 4
+BUTTON_PAD_RIGHT   = 5
+BUTTON_PAD_DOWN    = 6
+BUTTON_PAD_LEFT    = 7
+BUTTON_L2          = 8
+BUTTON_R2          = 9
+BUTTON_L1          = 10
+BUTTON_R1          = 11
+BUTTON_GREEN       = 12
+BUTTON_TRIANGLE    = 12
+BUTTON_RED         = 13
+BUTTON_CIRCLE      = 13
+BUTTON_BLUE        = 14
+BUTTON_CROSS       = 14
+BUTTON_PINK        = 15
+BUTTON_SQUARE      = 15
 
 # Sticks values
 PAD_RX = 5
@@ -62,33 +62,33 @@ PAD_LX = 7
 PAD_LY = 8
 
 # Analog buttons
-ANALOG_PAD_RIGHT   =  9
-ANALOG_PAD_LEFT    = 10
-ANALOG_PAD_UP      = 11
-ANALOG_PAD_DOWN    = 12
-ANALOG_GREEN       = 13
-ANALOG_TRIANGLE    = 13
-ANALOG_RED         = 14
-ANALOG_CIRCLE      = 14
-ANALOG_BLUE        = 15
-ANALOG_CROSS       = 15
-ANALOG_PINK        = 16
-ANALOG_SQUARE      = 16
-ANALOG_L1          = 17
-ANALOG_R1          = 18
-ANALOG_L2          = 19
-ANALOG_R2          = 20
+ANALOG_PAD_RIGHT   =  0
+ANALOG_PAD_LEFT    =  1
+ANALOG_PAD_UP      =  2
+ANALOG_PAD_DOWN    =  3
+ANALOG_GREEN       =  4
+ANALOG_TRIANGLE    =  4
+ANALOG_RED         =  5
+ANALOG_CIRCLE      =  5
+ANALOG_BLUE        =  6
+ANALOG_CROSS       =  6
+ANALOG_PINK        =  7
+ANALOG_SQUARE      =  7
+ANALOG_L1          =  8
+ANALOG_R1          =  9
+ANALOG_L2          = 10
+ANALOG_R2          = 11
 
 # Guitar Hero buttons constants
-UP_STRUM        = 0x0010
-DOWN_STRUM      = 0x0040
-STAR_POWER      = 0x0100
-GREEN_FRET      = 0x0200
-YELLOW_FRET     = 0x1000
-RED_FRET        = 0x2000
-BLUE_FRET       = 0x4000
-ORANGE_FRET     = 0x8000
-WHAMMY_BAR      = 8
+UP_STRUM        =  4  #0x0010
+DOWN_STRUM      =  6  #0x0040
+STAR_POWER      =  8  #0x0100
+GREEN_FRET      =  9  #0x0200
+YELLOW_FRET     = 12  #0x1000
+RED_FRET        = 13  #0x2000
+BLUE_FRET       = 14  #0x4000
+ORANGE_FRET     = 15  #0x8000
+WHAMMY_BAR      =  2  #8
 
 # Controllers
 GUITAR_HERO = 0x01
@@ -171,7 +171,7 @@ class PyS2x(object):
         if button is None:
             return (self._buttonsPrev ^ self._buttons) > 0
         else:
-            return ((self._buttonsPrev ^ self._buttons) & button) > 0
+            return ((self._buttonsPrev ^ self._buttons) & (1 << button)) > 0
 
     def buttonPressed(self, button):
         """
@@ -181,17 +181,20 @@ class PyS2x(object):
     def buttonReleased(self, button):
         """
         """
-        return self.newButtonState(button) & ((~self._buttonsPrev & button) > 0)
+        return self.newButtonState(button) & ((~self._buttonsPrev & (1 << button)) > 0)
 
     def button(self, button):
         """
         """
-        return (~self._buttons & button) > 0
+        return (~self._buttons & (1 << button)) > 0
 
-    def analog(self, button):
+    def analog(self, analogButton):
         """
         """
-        return self._rawData[button]
+        if not 0 <= analogButton <= 11:
+            raise PyS2xError("invalid analog button (%d)" % analogButton)
+
+        return self._rawData[9+analogButton]
 
     def _sendCmd(self, cmd):
         """
