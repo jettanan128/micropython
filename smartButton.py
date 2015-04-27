@@ -42,7 +42,6 @@ class SmartButton(object):
 
         self._fsmState = 'idle'
         self._pressTime = pyb.millis()
-        self._changeTime = pyb.millis()
         self._pinState = 0
         self._lastPinState = 0
 
@@ -58,14 +57,7 @@ class SmartButton(object):
         else:
             self._pinState = not self._pin.value()
 
-        trigger = {
-            'press': False,
-            'release': False,
-            'click': False,
-            'double-click': False,
-            'hold': False,
-            'double-hold': False
-            }
+        trigger = {}
 
         if self._fsmState == 'idle':
             if self._pinStateChanged and self._pinState:
@@ -101,13 +93,13 @@ class SmartButton(object):
 
         elif self._fsmState == 's3':
             if pyb.elapsed_millis(self._pressTime) > HOLD_DELAY:
-                trigger['doubleHold'] = True
+                trigger['double-hold'] = True
                 self._fsmState = 's4'
 
             elif self._pinStateChanged and not self._pinState:
                 trigger['release'] = True
                 if pyb.elapsed_millis(self._pressTime) < CLICK_DELAY:
-                    trigger['doubleClick'] = True
+                    trigger['double-click'] = True
                 self._fsmState = 'idle'
 
         elif self._fsmState == 's4':
